@@ -1,0 +1,6 @@
+#
+#  Add missing character to cp1255
+#  https://en.wikipedia.org/wiki/Windows-1255
+#
+
+0xCA  0x05BA  # HEBREW POINT HOLAM HASER FOR VAV

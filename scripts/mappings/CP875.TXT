@@ -1,0 +1,11 @@
+#
+#  Add missing characters to cp875
+#  https://en.wikibooks.org/wiki/Character_Encodings/Code_Tables/EBCDIC/Code_page_875
+#
+
+0xDC          # UNDEFINED
+0xE1  0x20AF  # DRACHMA SIGN
+0xEC  0x037A  # GREEK YPOGEGRAMMENI
+0xED          # UNDEFINED
+0xFC  0x20AC  # EURO SIGN
+0xFD          # UNDEFINED

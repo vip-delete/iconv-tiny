@@ -1,0 +1,107 @@
+{
+  "baseUrl": "http://www.unicode.org/Public/MAPPINGS",
+  "encodings": {
+    "sbcs": [
+      {
+        "path": "/ISO8859/8859-{ID}.TXT",
+        "name": "ISO-8859-{ID}",
+        "ids": {
+          "1": "ISO-8859-1 iso-ir-100 ISO_8859-1 latin1 l1 IBM819 cp819 csISOLatin1 819 IBM-819 ISO8859_1 ISO_8859_1 8859_1 ISO8859-1",
+          "2": "ISO-8859-2 iso8859_2 8859_2 iso-ir-101 ISO_8859-2 ISO8859-2 latin2 l2 ibm912 ibm-912 cp912 912 csISOLatin2",
+          "3": "ISO-8859-3 iso8859_3 8859_3 iso-ir-109 ISO_8859-3 ISO8859-3 latin3 l3 ibm913 ibm-913 cp913 913 csISOLatin3",
+          "4": "ISO-8859-4 iso8859_4 iso8859-4 8859_4 iso-ir-110 ISO_8859-4 latin4 l4 ibm914 ibm-914 cp914 914 csISOLatin4",
+          "5": "ISO-8859-5 iso8859_5 8859_5 iso-ir-144 ISO_8859-5 ISO8859-5 cyrillic ibm915 ibm-915 cp915 915 csISOLatinCyrillic",
+          "6": "ISO-8859-6 iso8859_6 8859_6 iso-ir-127 ISO_8859-6 ISO8859-6 ECMA-114 ASMO-708 arabic ibm1089 ibm-1089 cp1089 1089 csISOLatinArabic",
+          "7": "ISO-8859-7 iso8859_7 8859_7 iso-ir-126 ISO_8859-7 ELOT_928 ECMA-118 greek greek8 csISOLatinGreek sun_eu_greek ibm813 ibm-813 813 cp813 iso8859-7",
+          "8": "ISO-8859-8 iso8859_8 8859_8 iso-ir-138 ISO_8859-8 ISO8859-8 cp916 916 ibm916 ibm-916 hebrew csISOLatinHebrew",
+          "9": "ISO-8859-9 iso8859_9 8859_9 iso-ir-148 ISO_8859-9 ISO8859-9 latin5 l5 ibm920 ibm-920 920 cp920 csISOLatin5",
+          "10": "ISO-8859-10 iso-ir-157, l6, csISOLatin6, latin6",
+          "11": "ISO-8859-11 x-iso-8859-11 iso-8859-11 iso8859_11",
+          "13": "ISO-8859-13 iso8859_13 8859_13 iso_8859-13 ISO8859-13",
+          "14": "ISO-8859-14 iso-ir-199, latin8, iso-celtic, l8",
+          "15": "ISO-8859-15 ISO_8859-15 Latin-9 csISO885915 8859_15 ISO-8859-15 ISO8859_15 ISO8859-15 IBM923 IBM-923 cp923 923 LATIN0 LATIN9 L9 csISOlatin0 csISOlatin9 ISO8859_15_FDIS",
+          "16": "ISO-8859-16 iso-ir-226 ISO_8859-16:2001 ISO_8859-16 latin10 l10 csISO885916"
+        }
+      },
+      {
+        "path": "/VENDORS/MICSFT/EBCDIC/CP{ID}.TXT",
+        "name": "CP{ID}",
+        "ids": {
+          "037": "IBM037 cp037 ibm037 ebcdic-cp-us ebcdic-cp-ca ebcdic-cp-wt ebcdic-cp-nl csIBM037 cs-ebcdic-cp-us cs-ebcdic-cp-ca cs-ebcdic-cp-wt cs-ebcdic-cp-nl ibm-037 ibm-37 cpibm37 037",
+          "500": "IBM500 cp500 ibm500 ibm-500 500 ebcdic-cp-ch ebcdic-cp-bh csIBM500",
+          "875": "x-IBM875 cp875 ibm875 ibm-875 875",
+          "1026": "IBM1026 cp1026 ibm1026 ibm-1026 1026"
+        }
+      },
+      {
+        "path": "/VENDORS/MICSFT/PC/CP{ID}.TXT",
+        "name": "CP{ID}",
+        "ids": {
+          "437": "IBM437 cp437 ibm437 ibm-437 437 cspc8codepage437 windows-437",
+          "737": "x-IBM737 cp737 ibm737 ibm-737 737",
+          "775": "IBM775 cp775 ibm775 ibm-775 775",
+          "850": "IBM850 cp850 ibm-850 ibm850 850 cspc850multilingual",
+          "852": "IBM852 cp852 ibm852 ibm-852 852 csPCp852",
+          "855": "IBM855 cp855 ibm-855 ibm855 855 cspcp855",
+          "857": "IBM857 cp857 ibm857 ibm-857 857 csIBM857",
+          "860": "IBM860 cp860 ibm860 ibm-860 860 csIBM860",
+          "861": "IBM861 cp861 ibm861 ibm-861 861 csIBM861 cp-is",
+          "862": "IBM862 cp862 ibm862 ibm-862 862 csIBM862 cspc862latinhebrew",
+          "863": "IBM863 cp863 ibm863 ibm-863 863 csIBM863",
+          "864": "IBM864 cp864 ibm864 ibm-864 864 csIBM864",
+          "865": "IBM865 cp865 ibm865 ibm-865 865 csIBM865",
+          "866": "IBM866 cp866 ibm866 ibm-866 866 csIBM866",
+          "869": "IBM869 cp869 ibm869 ibm-869 869 cp-gr csIBM869",
+          "874": "x-IBM874 cp874 ibm874 ibm-874 874"
+        }
+      },
+      {
+        "path": "/VENDORS/MICSFT/WINDOWS/CP{ID}.TXT",
+        "name": "CP{ID}",
+        "ids": {
+          "1250": "windows-1250 cp1250 cp5346",
+          "1251": "windows-1251 cp1251 cp5347 ansi-1251",
+          "1252": "windows-1252 cp1252 cp5348 ibm-1252 ibm1252",
+          "1253": "windows-1253 cp1253 cp5349",
+          "1254": "windows-1254 cp1254 cp5350",
+          "1255": "windows-1255 cp1255",
+          "1256": "windows-1256 cp1256",
+          "1257": "windows-1257 cp1257 cp5353",
+          "1258": "windows-1258 cp1258"
+        }
+      },
+      {
+        "path": "/VENDORS/MICSFT/MAC/{ID}.TXT",
+        "name": "MAC-{ID}",
+        "ids": {
+          "CYRILLIC": "x-MacCyrillic MacCyrillic",
+          "GREEK": "x-MacGreek MacGreek",
+          "ICELAND": "x-MacIceland MacIceland",
+          "LATIN2": "x-MacCentralEurope MacCentralEurope",
+          "ROMAN": "x-MacRoman MacRoman",
+          "TURKISH": "x-MacTurkish MacTurkish"
+        }
+      },
+      {
+        "path": "/VENDORS/MISC/{ID}.TXT",
+        "name": "{ID}",
+        "ids": {
+          "ATARIST": "",
+          "CP424": "IBM424 cp424 ibm424 ibm-424 424 ebcdic-cp-he csIBM424",
+          "CP856": "x-IBM856 cp856 ibm-856 ibm856 856",
+          "CP1006": "x-IBM1006 cp1006 ibm1006 ibm-1006 1006",
+          "KOI8-R": "KOI8-R koi8_r koi8 cskoi8r",
+          "KOI8-U": "csKOI8U",
+          "KZ1048": "STRK1048-2002 RK1048 csKZ1048"
+        }
+      },
+      {
+        "path": "/VENDORS/NEXT/{ID}.TXT",
+        "name": "{ID}",
+        "ids": {
+          "NEXTSTEP": "WE8NEXTSTEP"
+        }
+      }
+    ]
+  }
+}
