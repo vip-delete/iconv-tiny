@@ -1,5 +1,8 @@
 # iconv-tiny
 
+[![ci](https://github.com/vip-delete/iconv-tiny/actions/workflows/ci.yaml/badge.svg)](https://github.com/vip-delete/iconv-tiny/actions/workflows/ci.yaml)
+[![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
+
 Pure JS ESM Encodings Set for Browser and NodeJS. Auto-Generated from Unicode.org.
 
 **Features**
@@ -44,11 +47,11 @@ See more [examples](examples).
 
 ```
 Encode 256KB text 10000 times:
-iconv-lite: 5232 ms, 477.829 Mb/s.
-iconv-tiny: 5198 ms, 480.954 Mb/s.
+iconv-lite: 5232 ms, 477.829 MB/s.
+iconv-tiny: 5198 ms, 480.954 MB/s.
 
 Decode 256KB array 10000 times:
-iconv-lite: 18008 ms, 138.827 Mb/s.
-iconv-tiny: 21008 ms, 119.002 Mb/s.
-iconv-tiny: 12412 ms, 201.418 Mb/s. <-- using native TextDecoder
+iconv-lite: 18008 ms, 138.827 MB/s.
+iconv-tiny: 21008 ms, 119.002 MB/s.
+iconv-tiny: 12412 ms, 201.418 MB/s. <-- using native TextDecoder
 ```

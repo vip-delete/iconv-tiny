@@ -1,5 +1,7 @@
 import fs from "fs";
 import Main from "google-closure-compiler";
+import Path from "path";
+import { fileURLToPath } from "url";
 
 export function getHeader() {
   const json = JSON.parse(readFileSync("package.json"));
@@ -24,8 +26,7 @@ export function getIdentifier(name) {
  * @returns {string}
  */
 export function abs(rel) {
-  const url = import.meta.url;
-  return url.slice(8, url.lastIndexOf("/")) + "/../" + rel;
+  return Path.resolve(Path.dirname(fileURLToPath(import.meta.url)), "../" + rel);
 }
 
 /**
