@@ -25,7 +25,7 @@ or import from CDN without installation:
 ```javascript
 import { IconvTiny, aliases, encodings } from "https://unpkg.com/iconv-tiny@1.0.0/dist/iconv-tiny.bundle.mjs";
 const iconvTiny = new IconvTiny(encodings, aliases);
-const buf = iconvTiny.decode("Le malheur est notre plus grand maître.", "cp1252")
+const buf = iconvTiny.encode("Le malheur est notre plus grand maître.", "cp1252")
 ...
 ```
 
