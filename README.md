@@ -21,6 +21,14 @@ Pure JS ESM Encodings Set for Browser and NodeJS. Auto-Generated from Unicode.or
 npm install iconv-tiny
 ```
 
+or import from CDN without installation:
+```javascript
+import { IconvTiny, aliases, encodings } from "https://unpkg.com/iconv-tiny@1.0.0/dist/iconv-tiny.bundle.mjs";
+const iconvTiny = new IconvTiny(encodings, aliases);
+const buf = iconvTiny.decode("Le malheur est notre plus grand maître.", "cp1252")
+...
+```
+
 ## Supported encodings:
 
 1. ISO-8859: 1,2,3,4,5,6,7,8,9,10,11,13,14,15,16
