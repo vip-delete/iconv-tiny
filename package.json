@@ -113,7 +113,7 @@
     "dev": "node scripts/server.js"
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^3.0.1",
+    "@stylistic/eslint-plugin": "^4.0.1",
     "@types/express": "^5.0.0",
     "@types/google-closure-compiler": "^20231112.0.0",
     "@types/node": "^22.10.3",
