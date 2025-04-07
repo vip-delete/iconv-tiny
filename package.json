@@ -125,7 +125,7 @@
     "google-closure-compiler": "^20240317.0.0",
     "iconv-lite": "^0.6.3",
     "prettier": "^3.4.2",
-    "serve-static": "^1.16.2",
+    "serve-static": "^2.2.0",
     "vitest": "^3.0.5"
   }
 }
