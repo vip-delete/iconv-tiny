@@ -114,18 +114,18 @@
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^4.2.0",
-    "@types/express": "^5.0.0",
+    "@types/express": "^5.0.1",
     "@types/google-closure-compiler": "^20231112.0.0",
-    "@types/node": "^22.10.3",
+    "@types/node": "20.x",
     "@types/serve-static": "^1.15.7",
-    "@vitest/coverage-istanbul": "^3.0.5",
-    "eslint": "^9.17.0",
-    "eslint-plugin-jsdoc": "^50.6.1",
+    "@vitest/coverage-istanbul": "^3.1.1",
+    "eslint": "^9.24.0",
+    "eslint-plugin-jsdoc": "^50.6.9",
     "express": "^5.1.0",
     "google-closure-compiler": "^20240317.0.0",
     "iconv-lite": "^0.6.3",
-    "prettier": "^3.4.2",
+    "prettier": "^3.5.3",
     "serve-static": "^2.2.0",
-    "vitest": "^3.0.5"
+    "vitest": "^3.1.1"
   }
 }

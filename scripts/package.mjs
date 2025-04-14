@@ -26,7 +26,7 @@ result.push(
 result.push(`export const encodings = {${names.map((it) => getIdentifier(it)).join(",")}}`);
 result.push(read("dist/aliases.mjs"));
 writeFileSync("dist/iconv-tiny.bundle.mjs", HEADER + "// @ts-nocheck\n" + result.join("\n") + "\n");
-copyFileSync("dist/iconv-tiny.bundle.mjs", "public/iconv-tiny.bundle.mjs");
+copyFileSync("dist/iconv-tiny.bundle.mjs", "static/iconv-tiny.bundle.mjs");
 
 /**
  * @param {string} filename

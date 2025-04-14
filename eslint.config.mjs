@@ -10,7 +10,7 @@ export default [
     semi: true,
   }),
   {
-    ignores: ["dist", "temp", "public", "src/encodings", "src/**/*-externs.mjs"],
+    ignores: ["dist", "temp", "static", "src/encodings", "src/**/*-externs.mjs"],
   },
   {
     languageOptions: {

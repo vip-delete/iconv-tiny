@@ -7,7 +7,7 @@ export default defineConfig({
       reporter: ["text", "html"],
       exclude: [
         "examples",
-        "public",
+        "static",
         "scripts",
         "types",
         "temp",
