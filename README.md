@@ -63,3 +63,7 @@ iconv-lite: 18008 ms, 138.827 MB/s.
 iconv-tiny: 21008 ms, 119.002 MB/s.
 iconv-tiny: 12412 ms, 201.418 MB/s. <-- using native TextDecoder
 ```
+
+## Demo
+
+https://vip-delete.github.io/iconv-tiny/
