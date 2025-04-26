@@ -35,12 +35,12 @@ function convertStrict(array) {
  */
 export class SBEF {
   /**
-   * @param {string} name
+   * @param {string} canonicalName
    * @param {string} symbols
    * @param {string} [diff]
    */
-  constructor(name, symbols, diff) {
-    this.name = name;
+  constructor(canonicalName, symbols, diff) {
+    this.canonicalName = canonicalName;
     this.mappings = getMappings(symbols, diff ?? "");
   }
 
@@ -52,12 +52,12 @@ export class SBEF {
   // @ts-ignore
   create(options) {
     const { c2b, b2c, mappedB, mappedC } = this.prepareEncodingData(options);
-    const encoding = this.name;
+    const canonicalName = this.canonicalName;
     const sbe = new SBE();
 
     // create "decode"
     if (this.canUseNativeDecode(options)) {
-      sbe.decode = (bytes) => new TextDecoder(encoding).decode(bytes);
+      sbe.decode = (bytes) => new TextDecoder(canonicalName).decode(bytes);
     } else {
       const decodeFunc = (options?.strictDecode ?? DEFAULT_STRICT_DECODE) ? convertStrict : convertFast;
       if (typeof options?.defaultCharUnicode === "function") {
@@ -96,7 +96,7 @@ export class SBEF {
       return false;
     }
     // use native TextDecoder.decode if supported
-    return isNativeSupported(this.name);
+    return isNativeSupported(this.canonicalName);
   }
 
   /**
@@ -136,12 +136,12 @@ function getMappings(symbols, diff) {
 }
 
 /**
- * @param {string} name
+ * @param {string} canonicalName
  * @returns {boolean}
  */
-function isNativeSupported(name) {
+function isNativeSupported(canonicalName) {
   try {
-    new TextDecoder(name).decode(new Uint8Array([0]));
+    new TextDecoder(canonicalName).decode(new Uint8Array([0]));
     return true;
   } catch {
     return false;

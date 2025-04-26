@@ -61,6 +61,10 @@ export class El {
    */
   on(event, listener) {
     this.el.addEventListener(event, listener);
+    if (event === "click") {
+      // set ":active" psudo-style on the element
+      this.el.addEventListener("touchstart", () => { });
+    }
     return this;
   }
 

@@ -47,6 +47,7 @@ export default [
       "jsdoc/require-returns-check": 0,
       "jsdoc/require-returns-description": 0,
       "max-classes-per-file": 0,
+      "max-depth": 0,
       "max-lines": 0,
       "max-lines-per-function": ["error", 100],
       "max-params": 0,

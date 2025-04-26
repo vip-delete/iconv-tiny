@@ -1,12 +1,38 @@
 <!doctype html>
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="description" content="Iconv character encoding online"/>
   <title>Iconv-Tiny</title>
+  <link rel="stylesheet" href="static/themes/dos/theme-dos.css">
   <link rel="stylesheet" href="static/app.css">
   <link rel="icon" type="image/svg+xml" href="static/favicon.svg">
+  <!-- use compiled code -->
+  <script type="importmap">
+    {
+      "imports": {
+        "iconv-tiny": "./static/iconv-tiny.bundle.mjs",
+        "iconv-tiny/aliases": "./static/iconv-tiny.bundle.mjs",
+        "iconv-tiny/encodings": "./static/iconv-tiny.bundle.mjs"
+      }
+    }
+  </script>
+  <!-- uncomment to use source code -->
+  <!-- <script type="importmap">
+    {
+      "imports": {
+        "iconv-tiny": "./src/iconv-tiny.mjs",
+        "iconv-tiny/aliases": "./static/iconv-tiny.bundle.mjs",
+        "iconv-tiny/encodings": "./src/encodings/index.mjs"
+      }
+    }
+  </script> -->
   <script defer="true" type="module" src="static/app.mjs"></script>
 </head>
-<body>
+<!-- tabindex=0 is required to make 'hover' css styles work
+  see https://dev.webonomic.nl/fixing-the-iphone-css-hover-problem-on-ios
+-->
+<body tabindex="0">
   <div id="app"></div>
 </body>

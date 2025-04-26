@@ -17,12 +17,14 @@ export class IconvTiny {
     const config = (aliases || "").split(",").map((row) => row.split(" ").map(canonicalize));
     for (const key of Object.keys(encodings)) {
       const encoding = encodings[key];
-      const name = canonicalize(key);
-      this.encodingFactoryMap.set(name, encoding);
-      for (const row of config) {
-        if (row.includes(name)) {
-          for (const alias of row) {
-            this.encodingFactoryMap.set(alias, encoding);
+      if (typeof encoding.create === "function") {
+        const name = canonicalize(key);
+        this.encodingFactoryMap.set(name, encoding);
+        for (const row of config) {
+          if (row.includes(name)) {
+            for (const alias of row) {
+              this.encodingFactoryMap.set(alias, encoding);
+            }
           }
         }
       }

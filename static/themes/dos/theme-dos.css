@@ -1,0 +1,343 @@
+@font-face {
+  font-family: "IBMVGA8";
+  src: url("./WebPlus_IBM_VGA_8x16.woff") format("woff");
+}
+
+:root {
+  --black: #000;
+  --blue: #00a;
+  --green: #0a0;
+  --cyan: #0aa;
+  --red: #a00;
+  --magenta: #a0a;
+  --brown: #a50;
+  --white: #aaa;
+  --bright-black: #555;
+  --bright-blue: #55f;
+  --bright-green: #5f5;
+  --bright-cyan: #5ff;
+  --bright-red: #f55;
+  --bright-magenta: #f5f;
+  --yellow: #ff5;
+  --bright-white: #fff;
+
+  --scale-factor: 2;
+  --glyph-height-origin: 16px;
+  --glyph-width-origin: 8px;
+  --glyph-height: calc(var(--scale-factor) * var(--glyph-height-origin));
+  --glyph-width: calc(var(--scale-factor) * var(--glyph-width-origin));
+
+  --border-width-top-origin: 1px;
+  --border-width-right-origin: 2px;
+  --border-width-bottom-origin: 1px;
+  --border-width-left-origin: 2px;
+  --border-width-top: calc(var(--scale-factor) * var(--border-width-top-origin));
+  --border-width-right: calc(var(--scale-factor) * var(--border-width-right-origin));
+  --border-width-bottom: calc(var(--scale-factor) * var(--border-width-bottom-origin));
+  --border-width-left: calc(var(--scale-factor) * var(--border-width-left-origin));
+  --border-width: var(--border-width-top) var(--border-width-right) var(--border-width-bottom) var(--border-width-left);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: "IBMVGA8", monospace;
+  /* background-image: url("./bg.svg"); */
+  background-color: #aaa;
+  /* background-color: #7f7faa; */
+  background-size: calc(var(--scale-factor) * 4px) calc(var(--scale-factor) * 2px);
+}
+
+body {
+  margin: 0;
+  color: var(--white);
+  font-size: var(--glyph-height);
+  line-height: var(--glyph-height);
+}
+
+@media print {
+  * {
+    color: black !important;
+    background-color: white !important;
+    background: white !important;
+  }
+
+  fieldset:before,
+  fieldset:after {
+    border: none !important;
+  }
+
+  fieldset {
+    box-shadow: none !important;
+  }
+
+  fieldset>legend {
+    display: none !important;
+  }
+
+  nav {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1280px) {
+  :root {
+    --scale-factor: 1.5;
+  }
+}
+
+/* iphone 13 mini should not use scale 1 in album mode */
+@media (max-width: 606px) {
+  :root {
+    --scale-factor: 1;
+  }
+}
+
+/* for small screens, remove margins from fieldset */
+@media (max-width: 960px) {
+  fieldset {
+    width: 100%;
+  }
+}
+
+.black {
+  color: var(--black);
+}
+
+.blue {
+  color: var(--blue);
+}
+
+.green {
+  color: var(--green);
+}
+
+.cyan {
+  color: var(--cyan);
+}
+
+.red {
+  color: var(--red);
+}
+
+.magenta {
+  color: var(--magenta);
+}
+
+.brown {
+  color: var(--brown);
+}
+
+.white {
+  color: var(--white);
+}
+
+.bright-black {
+  color: var(--bright-black);
+}
+
+.bright-blue {
+  color: var(--bright-blue);
+}
+
+.bright-green {
+  color: var(--bright-green);
+}
+
+.bright-cyan {
+  color: var(--bright-cyan);
+}
+
+.bright-red {
+  color: var(--bright-red);
+}
+
+.bright-magenta {
+  color: var(--bright-magenta);
+}
+
+.yellow {
+  color: var(--yellow);
+}
+
+.bright-white {
+  color: var(--bright-white);
+}
+
+.bg-black {
+  background-color: var(--black);
+}
+
+.bg-blue {
+  background-color: var(--blue);
+}
+
+.bg-green {
+  background-color: var(--green);
+}
+
+.bg-cyan {
+  background-color: var(--cyan);
+}
+
+.bg-red {
+  background-color: var(--red);
+}
+
+.bg-magenta {
+  background-color: var(--magenta);
+}
+
+.bg-yellow {
+  background-color: var(--yellow);
+}
+
+.bg-white {
+  background-color: var(--white);
+}
+
+.bg-bright-black {
+  background-color: var(--bright-black);
+}
+
+.bg-bright-blue {
+  background-color: var(--bright-blue);
+}
+
+.bg-bright-green {
+  background-color: var(--bright-green);
+}
+
+.bg-bright-cyan {
+  background-color: var(--bright-cyan);
+}
+
+.bg-bright-red {
+  background-color: var(--bright-red);
+}
+
+.bg-bright-magenta {
+  background-color: var(--bright-magenta);
+}
+
+.bg-bright-yellow {
+  background-color: var(--bright-yellow);
+}
+
+.bg-bright-white {
+  background-color: var(--bright-white);
+}
+
+h1 {
+  color: var(--yellow);
+  font-size: var(--glyph-height);
+  font-weight: normal;
+  line-height: var(--glyph-height);
+  text-align: center;
+  margin: var(--glyph-height);
+}
+
+p {
+  text-indent: calc(2 * var(--glyph-width));
+}
+
+a {
+  text-decoration: none;
+  color: var(--bright-green);
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-size: var(--glyph-height);
+  padding: 0 var(--glyph-width);
+  border: none;
+  font-family: inherit;
+  box-shadow: calc(var(--glyph-width)) calc(var(--glyph-height) / 2) var(--black);
+  color: var(--black);
+}
+
+button:first-letter {
+  color: var(--red);
+}
+
+button:hover,
+button:focus,
+button:focus-visible {
+  background-color: var(--yellow);
+  outline: none;
+}
+
+button:active {
+  background-color: var(--yellow);
+  translate: calc(var(--glyph-width));
+  box-shadow: none;
+}
+
+fieldset {
+  position: relative;
+  border: none;
+  margin: 0 auto;
+  width: 100%;
+  max-width: calc(84 * var(--glyph-width));
+  padding-top: var(--glyph-height);
+  padding-bottom: var(--glyph-height);
+  padding-left: calc(2 * var(--glyph-width));
+  padding-right: calc(2 * var(--glyph-width));
+  box-shadow: calc(2 * var(--glyph-width)) var(--glyph-height) rgba(0, 0, 0, 0.6);
+}
+
+fieldset:before {
+  position: absolute;
+  border-width: var(--border-width);
+  border-style: solid;
+  border-color: var(--bright-white);
+  content: "";
+  inset: calc(var(--scale-factor) * 5px) calc(var(--scale-factor) * 2px) calc(var(--scale-factor) * 8px) calc(var(--scale-factor) * 2px);
+  pointer-events: none;
+}
+
+fieldset:after {
+  position: absolute;
+  border-width: calc(var(--scale-factor) * 1px) calc(var(--scale-factor) * 2px) calc(var(--scale-factor) * 1px) calc(var(--scale-factor) * 2px);
+  border-style: solid;
+  border-color: white;
+  content: "";
+  z-index: 0;
+  inset: calc(var(--scale-factor) * 7px) calc(var(--scale-factor) * 5px) calc(var(--scale-factor) * 10px) calc(var(--scale-factor) * 5px);
+  pointer-events: none;
+}
+
+fieldset>legend {
+  position: absolute;
+  display: block;
+  margin-top: calc(-1 * var(--glyph-height));
+  margin-left: var(--glyph-width);
+  padding: 0 var(--glyph-width);
+  background-color: inherit;
+  z-index: 1;
+  color: var(--bright-white);
+}
+
+textarea, select {
+  display: block;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  border: none;
+  border-radius: 0;
+  margin: 0 2px 2px -2px;
+  padding: 0 2px;
+  width: calc(100% + 4px);
+}
+
+option {
+  padding: 0;
+  margin: 0;
+}
