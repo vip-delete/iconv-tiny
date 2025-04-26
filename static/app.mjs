@@ -11,24 +11,20 @@ async function onLoad() {
   app.appendChild(
     el("fieldset").cls("bg-blue").children([
       el("legend").text("Iconv-Tiny"),
-      div().html("&nbsp;"),
       div().cls("yellow").text("Encoding:"),
-      div().children(el("select").cls("black").attrs({ id: "encoding", style: "max-width: 250px; " })
+      div().children(el("select").cls("black").attrs({ id: "encoding", style: "max-width: 270px; " })
         .children(list.map(it => el("option").attrs({ value: it }).text(it))),
       ).on("change", encode),
-      div().html("&nbsp;"),
       div().cls("yellow").text("Text:"),
       div().children(
         el("textarea").cls("bg-bright-white black").attrs({ id: "text", rows: 5 }).on("input", encode),
       ),
       el("button").text("Copy Text").attrs({ id: "copyText" }).on("click", copyText),
-      div().html("&nbsp;"),
       div().cls("yellow").text("Bytes:"),
       div().children(
         el("textarea").cls("bg-bright-white black").attrs({ id: "bytes", rows: 5 }).on("input", decode),
       ),
       el("button").text("Copy Bytes").attrs({ id: "copyBytes" }).on("click", copyBytes),
-      div().html("&nbsp;"),
       div().cls("bright-red").attrs({ id: "err" })
     ]).el
   );
