@@ -47,14 +47,14 @@
 html {
   font-family: "IBMVGA8", monospace;
   /* background-image: url("./bg.svg"); */
-  background-color: #aaa;
+  background-color: var(--blue);
   /* background-color: #7f7faa; */
   background-size: calc(var(--scale-factor) * 4px) calc(var(--scale-factor) * 2px);
 }
 
 body {
   margin: 0;
-  color: var(--white);
+  color: var(--black);
   font-size: var(--glyph-height);
   line-height: var(--glyph-height);
 }
@@ -66,41 +66,33 @@ body {
     background: white !important;
   }
 
+
   fieldset:before,
   fieldset:after {
     border: none !important;
   }
 
-  fieldset {
+  article {
     box-shadow: none !important;
+    margin: 0;
   }
 
-  fieldset>legend {
-    display: none !important;
-  }
-
-  nav {
+  fieldset>legend, nav, button {
     display: none !important;
   }
 }
 
-@media (max-width: 1280px) {
+/* 80 * 2 * 8 + 16 */
+@media (max-width: 1296px) {
   :root {
     --scale-factor: 1.5;
   }
 }
 
-/* iphone 13 mini should not use scale 1 in album mode */
-@media (max-width: 606px) {
+/* 40 * 1.5 * 8 + 12 */
+@media (max-width: 492px) {
   :root {
     --scale-factor: 1;
-  }
-}
-
-/* for small screens, remove margins from fieldset */
-@media (max-width: 960px) {
-  fieldset {
-    width: 100%;
   }
 }
 
@@ -232,11 +224,15 @@ body {
   background-color: var(--bright-white);
 }
 
-h1 {
-  color: var(--yellow);
+h1, h2, h3, h4, h5, h6 {
+  color: var(--black);
   font-size: var(--glyph-height);
   font-weight: normal;
   line-height: var(--glyph-height);
+  margin: 0;
+}
+
+h1 {
   text-align: center;
   margin: var(--glyph-height);
 }
@@ -259,7 +255,7 @@ button {
   padding: 0 var(--glyph-width);
   border: none;
   font-family: inherit;
-  box-shadow: calc(var(--glyph-width)) calc(var(--glyph-height) / 2) var(--black);
+  box-shadow: calc(var(--glyph-width)) calc(var(--glyph-height) / 2) rgba(0, 0, 0, 0.6);;
   color: var(--black);
 }
 
@@ -280,17 +276,25 @@ button:active {
   box-shadow: none;
 }
 
+main {
+  margin: 0 auto;
+  max-width: calc(80 * var(--glyph-width));
+  transition: width;
+}
+
+article {
+  box-shadow: calc(2 * var(--glyph-width)) var(--glyph-height) rgba(0, 0, 0, 0.6);
+}
+
 fieldset {
   position: relative;
   border: none;
-  margin: 0 auto;
-  width: 100%;
-  max-width: calc(84 * var(--glyph-width));
   padding-top: var(--glyph-height);
   padding-bottom: var(--glyph-height);
   padding-left: calc(2 * var(--glyph-width));
   padding-right: calc(2 * var(--glyph-width));
-  box-shadow: calc(2 * var(--glyph-width)) var(--glyph-height) rgba(0, 0, 0, 0.6);
+  background-color: var(--white);
+  margin: 0;
 }
 
 fieldset:before {
@@ -325,29 +329,64 @@ fieldset>legend {
   color: var(--bright-white);
 }
 
-textarea, select {
+textarea, select, input {
   display: block;
   font-family: inherit;
   font-size: inherit;
-  color: inherit;
   border: none;
   border-radius: 0;
-  line-height: 1;
-  margin: 0 0 var(--glyph-height) 0;
-  padding: 0 var(--glyph-width);
-  width: 100%;
+  line-height: var(--glyph-height);
+  margin: 0;
+  padding: 0;
+  background-color: var(--cyan);
+  color: var(--black);
+  outline: none;
 }
 
-textarea:focus {
-  outline: none;
-  background-color: #5f5;
+select, input {
+  height: var(--glyph-height);
+}
+
+textarea {
+  resize: none;
+  width: 100%;
+  min-width: calc(10 * var(--glyph-width));
+  min-height: calc(2 * var(--glyph-height));
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none; /* для Safari и Chrome */
+  -moz-appearance: none;    /* для Firefox */
 }
 
 button {
   margin: 0 calc(2 * var(--glyph-width)) var(--glyph-height) 0;
 }
 
-option {
-  padding: 0;
-  margin: 0;
+
+
+.checkbox-container {
+  cursor: pointer;
+  display: block;
+}
+
+.checkbox-container input[type=checkbox] {
+  display: none;
+}
+
+.checkbox-container > div {
+  background-color: var(--cyan);
+  width: calc(3 * var(--glyph-width));
+  display: inline-block;
+}
+
+/* Checked effect */
+.checkbox-container > div::after {
+  content: "[ ]";
+}
+
+/* Checked effect */
+.checkbox-container > input:checked~div::after {
+  content: "[x]";
 }

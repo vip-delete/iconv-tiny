@@ -49,7 +49,14 @@ export class El {
    */
   attrs(attrs) {
     for (const [key, value] of Object.entries(attrs)) {
-      this.el.setAttribute(key, value);
+      if (key === "data") {
+        for (const [dataKey, dataValue] of Object.entries(value)) {
+          this.el.dataset[dataKey] = dataValue;
+        }
+      } else {
+        this.el.setAttribute(key, value);
+      }
+
     }
     return this;
   }

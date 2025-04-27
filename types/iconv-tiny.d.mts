@@ -53,7 +53,7 @@ type Options = {
    */
   graphicMode?: boolean;
   /**
-   * Specifies the behavior of "decode" method:
+   * Specifies the behavior of "decode" method (default: false)
    *
    * - true: use native TextDecoder.decode if the given encoding supported
    * - false: use "software" decode according to the mapping rules.
@@ -63,7 +63,7 @@ type Options = {
    */
   nativeDecode?: boolean;
   /**
-   * Specifies the behavior of non-native "decode" method
+   * Specifies the behavior of non-native "decode" method (default: false)
    *
    * - true: use String.fromCharCode to create a string from UTF-16 sequence.
    * - false: use TextDecoder("UTF-16") to create a string from UTF-16 sequence.
