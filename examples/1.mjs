@@ -1,4 +1,4 @@
-import { CP1251 } from "iconv-tiny/encodings/CP1251";
+import { CP1251 } from "iconv-tiny/encodings";
 
 // This is a simple example of the direct encoding usage.
 // Technically, CP1251 is a "single-byte EncodingFactory" instance.

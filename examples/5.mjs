@@ -1,5 +1,5 @@
 import fs from "fs";
-import { CP437 } from "iconv-tiny/encodings/CP437";
+import { CP437 } from "iconv-tiny/encodings";
 import Path from "path";
 import { fileURLToPath } from "url";
 
@@ -12,6 +12,7 @@ export function abs(rel) {
 }
 
 // CP437 is also used to decode NFO-files, which are ASCII-art in the CP437 codepage
+// find more at http://artscene.textfiles.com/asciiart/NFOS/
 const cp = CP437.create();
 const buf = fs.readFileSync(abs("legend.nfo"));
 const str = cp.decode(buf);

@@ -1,15 +1,16 @@
 import fs from "fs";
-import Main from "google-closure-compiler";
+import { compiler as Compiler } from "google-closure-compiler";
 import Path from "path";
 import { fileURLToPath } from "url";
 
 export function getHeader() {
   const json = JSON.parse(readFileSync("package.json"));
   return `/**
-* This file is part of Iconv-Tiny v${json.version}
-* (c) 2025-present ${json.author}
-* @license ${json.license}
-**/
+ * Code generated. DO NOT EDIT.
+ * This file is part of Iconv-Tiny v${json.version}
+ * (c) 2025-present ${json.author}
+ * @license ${json.license}
+ **/
 `;
 }
 
@@ -110,7 +111,6 @@ export async function compile(name, wrapperFile, outputFile, files, target) {
     /* eslint-enable camelcase */
   };
 
-  const Compiler = Main.compiler;
   await new Promise((resolve, reject) => {
     new Compiler(args).run((exitCode, stdout, stderr) => {
       if (stdout) {
@@ -147,6 +147,6 @@ export async function compile(name, wrapperFile, outputFile, files, target) {
  * @typedef {{
  *    path: string,
  *    name: string,
- *    ids: {[key:string]:string}
+ *    ids: !Array<string>,
  * }} Encoding
  */

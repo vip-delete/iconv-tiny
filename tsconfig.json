@@ -8,5 +8,5 @@
     "moduleResolution": "Bundler",
     "outDir": "out"
   },
-  "exclude": ["node_modules", "dist", "src/**/*-externs.mjs"]
+  "exclude": ["node_modules", "dist", "src/externs.mjs"]
 }

@@ -1,8 +1,9 @@
-import { IconvTiny, aliases, encodings } from "../dist/iconv-tiny.bundle.mjs";
+import { IconvTiny, aliases } from "../dist/iconv-tiny.bundle.mjs";
+import * as encodings from "../dist/iconv-tiny.bundle.mjs";
 
 // File "iconv-tiny.bundle.mjs" contains everything in ~24KB
 // It simplifies integration without the need for build tools.
-// You can modify the file by removing the encodings you don't need to support.
+// You can modify the file by removing the encodings you don't need.
 const iconv = new IconvTiny(encodings, aliases);
 
 // get encoding names from aliases:

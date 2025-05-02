@@ -37,7 +37,3 @@ console.log(str2); // ABCD⍰⍰⍰
 const overrides = [65, 0xd83e, 66, 0xddf3, 67, 0x2708, 68, 0xd83c, 0x81, 0xddfa, 0x8d, 0xddf8];
 const funcy = iconv666.decode(new Uint8Array([65, 66, 67, 68, 0x81, 68, 0x8d]), "Windows-1252", { overrides });
 console.log(funcy); // 🧳✈🇺🇸
-
-// ... use graphic symbols for control codes 0x00..0x1F:
-const symbols = iconv666.decode(new Uint8Array([3, 4, 5, 6]), "Windows-1252", { graphicMode: true });
-console.log(symbols); // ♥♦♣♠

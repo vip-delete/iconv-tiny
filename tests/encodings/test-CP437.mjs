@@ -1,16 +1,19 @@
+import { CP437 as CP } from "iconv-tiny/encodings";
 import { expect, test } from "vitest";
 
-/**
- * @param {import("../common.mjs").SBEF} CP
- */
-export function testCP437(CP) {
-  test("CP437", () => {
-    const cp = CP.create();
-    expect(cp.decode(new Uint8Array([0, 1, 2]))).toBe("\x00\x01\x02");
-  });
+test("CP437", () => {
+  const cp = CP.create();
+  expect(cp.getName()).toBe("CP437");
+  expect(cp.decode(new Uint8Array([0, 1, 2]))).toBe("\x00\x01\x02");
+});
 
-  test("CP437 graphic mode", () => {
-    const cp2 = CP.create({ graphicMode: true });
-    expect(cp2.decode(new Uint8Array([0, 1, 2, 3, 4]))).toBe(" ☺☻♥♦");
-  });
-}
+test("CP437 graphic mode", () => {
+  const graphics = " ☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼";
+  const overrides = [];
+  for (let i = 0; i < graphics.length; i++) {
+    overrides.push(i);
+    overrides.push(graphics[i]);
+  }
+  const cp = CP.create({ overrides });
+  expect(cp.decode(new Uint8Array([0, 1, 2, 3, 4]))).toBe(" ☺☻♥♦");
+});

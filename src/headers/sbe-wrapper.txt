@@ -1,3 +1,0 @@
-const sbeNS = {};
-(function(){%output%})();
-export const { SBEF } = sbeNS;

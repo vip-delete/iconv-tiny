@@ -1,19 +1,23 @@
-import { coverageConfigDefaults, defineConfig } from "vitest/config";
+import { configDefaults, coverageConfigDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    include: [
+      ...configDefaults.include,
+      // ignore coverage.mjs, but include if call explicitly
+      ...(process.argv.includes('coverage.mjs') ? ['**/coverage.mjs'] : [])
+    ],
     coverage: {
       provider: "istanbul",
-      reporter: ["text", "html"],
+      reporter: ["text"],
       exclude: [
+        ...coverageConfigDefaults.exclude,
         "examples",
         "static",
         "scripts",
-        "types",
         "temp",
-        "src/encodings",
-        "src/headers",
-        ...coverageConfigDefaults.exclude,
+        "src/exports.mjs",
+        "src/externs.mjs",
       ],
     },
   },

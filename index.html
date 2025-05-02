@@ -1,38 +1,102 @@
 <!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Iconv-Tiny</title>
+    <link rel="preload" href="/static/WebPlus_IBM_VGA_8x16.woff" as="font" type="font/woff" crossorigin />
+    <link rel="stylesheet" href="static/app.css" />
+    <link rel="icon" type="image/svg+xml" href="static/favicon.svg" />
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3.5.16/dist/vue.esm-browser.prod.js",
+          "iconv-tiny": "./dist/iconv-tiny.runtime.mjs",
+          "iconv-tiny/aliases": "./dist/iconv-tiny.aliases.mjs",
+          "iconv-tiny/encodings": "./dist/iconv-tiny.encodings.mjs"
+        }
+      }
+    </script>
+    <script defer type="module" src="static/app.mjs"></script>
+    <style>
+      [v-cloak] {
+        display: none;
+      }
+    </style>
+  </head>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <meta name="description" content="Iconv character encoding online"/>
-  <title>Iconv-Tiny</title>
-  <link rel="stylesheet" href="static/themes/dos/theme-dos.css">
-  <link rel="stylesheet" href="static/app.css">
-  <link rel="icon" type="image/svg+xml" href="static/favicon.svg">
-  <!-- use compiled code -->
-  <script type="importmap">
-    {
-      "imports": {
-        "iconv-tiny": "./static/iconv-tiny.bundle.mjs",
-        "iconv-tiny/aliases": "./static/iconv-tiny.bundle.mjs",
-        "iconv-tiny/encodings": "./static/iconv-tiny.bundle.mjs"
-      }
-    }
-  </script>
-  <!-- uncomment to use source code -->
-  <!-- <script type="importmap">
-    {
-      "imports": {
-        "iconv-tiny": "./src/iconv-tiny.mjs",
-        "iconv-tiny/aliases": "./static/iconv-tiny.bundle.mjs",
-        "iconv-tiny/encodings": "./src/encodings/index.mjs"
-      }
-    }
-  </script> -->
-  <script defer="true" type="module" src="static/app.mjs"></script>
-</head>
-<!-- tabindex=0 is required to make 'hover' css styles work
+  <!-- tabindex=0 is required to make 'hover' css styles work
   see https://dev.webonomic.nl/fixing-the-iphone-css-hover-problem-on-ios
--->
-<body tabindex="0">
-  <div id="app"></div>
-</body>
+  -->
+  <body tabindex="0">
+    <div id="app" v-cloak>
+      <main>
+        <article>
+          <fieldset>
+            <legend>Iconv-Tiny</legend>
+
+            <label>
+              <span style="margin-right: 1ch">Encoding...........:</span>
+              <select v-model="encoding" style="width: 12ch">
+                <option v-for="encoding in encodingNames" :key="encoding">{{ encoding }}</option>
+              </select>
+            </label>
+            <br />
+
+            <label>
+              <span style="margin-right: 1ch">DefaultCharByte....:</span>
+              <input v-model="defaultCharByte" maxlength="1" style="width: 1ch" />
+              <span style="margin-left: 1ch">{{ defaultCharByteCode }}</span>
+            </label>
+            <br />
+
+            <label>
+              <span style="margin-right: 1ch">DefaultCharUnicode.:</span>
+              <input v-model="defaultCharUnicode" maxlength="1" style="width: 1ch" />
+              <span style="margin-left: 1ch">{{ defaultCharUnicodeCode }}</span>
+            </label>
+            <br />
+
+            <label>
+              <span style="margin-right: 1ch">NativeDecode.......:</span>
+              <input v-model="native" type="checkbox" />
+              <span></span>
+            </label>
+            <br />
+
+            <label>
+              <span>Text:</span>
+              <br />
+              <textarea v-model="text" rows="4"></textarea>
+            </label>
+            <br />
+
+            <div class="buttons">
+              <button @click="encode">Encode</button>
+              <button @click="copyText">Copy Text</button>
+            </div>
+            <br />
+
+            <label>
+              <span>Bytes:</span>
+              <br />
+              <textarea v-model="hexDump" rows="4"></textarea>
+            </label>
+            <br />
+
+            <div class="buttons">
+              <button @click="decode">Decode</button>
+              <button @click="loadFromFile">Open file</button>
+              <input ref="fileInput" type="file" @change="handleFileChange" style="display: none" />
+              <button @click="saveAsFile">Save file</button>
+            </div>
+            <br />
+
+            <div v-if="error" style="color: var(--red)">{{ error }}</div>
+          </fieldset>
+        </article>
+      </main>
+      <pre class="print">{{ text }}</pre>
+    </div>
+  </body>
+</html>

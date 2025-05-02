@@ -1,7 +1,5 @@
 import { IconvTiny } from "iconv-tiny";
-import { CP437 } from "iconv-tiny/encodings/CP437";
-import { CP1252 } from "iconv-tiny/encodings/CP1252";
-// import { CP437, CP1252 } from "iconv-tiny/encodings";
+import { CP437, CP1252 } from "iconv-tiny/encodings";
 
 // Sometimes the size matters and we want to include
 // a limited number of encodings to our JS bundle.

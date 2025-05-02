@@ -1,5 +1,4 @@
-import { CP437 } from "iconv-tiny/encodings/CP437";
-import { CP864 } from "iconv-tiny/encodings/CP864";
+import { CP437, CP864 } from "iconv-tiny/encodings";
 
 // A range 0x00..0x1F is mapped to Unicode "as-is":
 // 0 (NULL) to U+0000, 9 (TAB) to U+0009, ...
@@ -14,8 +13,29 @@ for (let i = 0; i < 256; i++) {
   buf[i] = i;
 }
 
-// Usually CP437 is used, but it can be any.
-const cp = CP437.create({ graphicMode: true });
+/**
+ * @param {string} graphics
+ * @returns {!Array<number|string>}
+ */
+function createOverrides(graphics) {
+  const overrides = [];
+  for (let i = 0; i < graphics.length; i++) {
+    overrides.push(i);
+    overrides.push(graphics[i]);
+  }
+  return overrides;
+}
+
+/**
+ * Specifies the alternative symbols for the first 32 control bytes.
+ *
+ * The default is IBM PC memory-mapped symbols: " ☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼"
+ * - 0x00 maps to U+0020 " " Space
+ * - 0x01 maps to U+263A "☺" White Smiling Face
+ * - 0x02 maps to 0x263B "☻" Black Smiling Face
+ * ...
+ */
+const cp = CP437.create({ overrides: createOverrides(" ☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼") });
 const page437 = cp.decode(buf);
 console.log(page437.replace(/(?<line>.{32})/gu, "$<line>\n"));
 
@@ -31,8 +51,7 @@ console.log(page437.replace(/(?<line>.{32})/gu, "$<line>\n"));
 // αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■
 
 // CP864 uses different symbols for video graphics
-const graphics = " ☺♪♫☼═║╬╣╦╠╩╗╔╚╝►◄↕‼¶§▬↨↑↓→←∟↔▲▼";
-const cp864 = CP864.create({ graphicMode: true, graphics });
+const cp864 = CP864.create({ overrides: createOverrides(" ☺♪♫☼═║╬╣╦╠╩╗╔╚╝►◄↕‼¶§▬↨↑↓→←∟↔▲▼") });
 const page864 = cp864.decode(buf);
 console.log(page864.replace(/(?<line>.{32})/gu, "$<line>\n"));
 

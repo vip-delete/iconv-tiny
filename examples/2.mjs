@@ -1,4 +1,4 @@
-import { CP1251 } from "iconv-tiny/encodings/CP1251";
+import { CP1251 } from "iconv-tiny/encodings";
 
 // CP1251 is for Cyrillic languages: Russian, Serbia, Bulgarian, ...
 const cp1251 = CP1251.create();

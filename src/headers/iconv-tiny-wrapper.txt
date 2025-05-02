@@ -1,3 +1,0 @@
-const iconvTinyNS = {};
-(function(){%output%})();
-export const { IconvTiny } = iconvTinyNS;

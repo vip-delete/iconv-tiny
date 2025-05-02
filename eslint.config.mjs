@@ -10,18 +10,17 @@ export default [
     semi: true,
   }),
   {
-    ignores: ["dist", "temp", "static", "src/encodings", "src/**/*-externs.mjs"],
+    ignores: ["dist", "temp", "static", "src/externs.mjs"],
   },
   {
     languageOptions: {
       globals: {
         TextEncoder: "readonly",
         TextDecoder: "readonly",
+        Buffer: "readonly",
         fetch: "readonly",
         console: "readonly",
-        encNS: "readonly",
-        sbeNS: "readonly",
-        iconvTinyNS: "readonly",
+        ns: "readonly",
       },
     },
     plugins: {

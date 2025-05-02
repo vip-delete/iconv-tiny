@@ -1,0 +1,3 @@
+const ns = {};
+(function(){%output%})();
+export const { IconvTiny, canonicalize, SBCS, Unicode } = ns;

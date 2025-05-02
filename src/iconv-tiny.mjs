@@ -1,72 +1,75 @@
 /**
- * @implements {iconvTinyNS.IconvTiny}
+ * @implements {ns.IconvTiny}
  */
 export class IconvTiny {
   /**
-   * @param {!Object<string, !encNS.EncodingFactory>} encodings
+   * @param {!Object<string, !ns.EncodingFactory>} [encodings]
    * @param {string} [aliases]
    */
   constructor(encodings, aliases) {
+    encodings ??= {};
     /**
-     * @type {!Map<string, !encNS.EncodingFactory>}
+     * @type {!Map<string, !ns.EncodingFactory>}
      */
-    this.encodingFactoryMap = new Map();
+    const encodingFactoryMap = new Map();
+    /**
+     * @type {!Map<string, !ns.Encoding>}
+     */
+    this.cache = new Map();
     /**
      * @type {!Array<!Array<string>>}
      */
-    const config = (aliases || "").split(",").map((row) => row.split(" ").map(canonicalize));
+    const config = (aliases ?? "").split(",").map((row) => row.split(" ").map(canonicalize));
     for (const key of Object.keys(encodings)) {
+      /**
+       * @type {!ns.EncodingFactory}
+       */
       const encoding = encodings[key];
-      if (typeof encoding.create === "function") {
+      // check that "encoding" is EncodingFactory
+      // @ts-ignore
+      if (encoding.create) {
         const name = canonicalize(key);
-        this.encodingFactoryMap.set(name, encoding);
-        for (const row of config) {
-          if (row.includes(name)) {
-            for (const alias of row) {
-              this.encodingFactoryMap.set(alias, encoding);
-            }
-          }
-        }
+        encodingFactoryMap.set(name, encoding);
+        config.filter((row) => row.includes(name)).forEach((row) => row.forEach((alias) => encodingFactoryMap.set(alias, encoding)));
       }
     }
-    /**
-     * @type {!Map<string, !encNS.Encoding>}
-     */
-    this.cache = new Map();
+    this.encodingFactoryMap = encodingFactoryMap;
   }
 
   /**
    * @override
-   * @param {!Uint8Array} buffer
+   * @param {!Uint8Array} array
    * @param {string} encoding
-   * @param {!encNS.Options} [options]
+   * @param {!ns.OptionsAndDecoderOptions} [options]
    * @returns {string}
    */
   // @ts-ignore
-  decode(buffer, encoding, options) {
-    return this.getEncoding(encoding, options).decode(buffer);
+  decode(array, encoding, options) {
+    return this.getEncoding(encoding, options).decode(array, options);
   }
 
   /**
    * @override
    * @param {string} content
    * @param {string} encoding
-   * @param {!encNS.Options} [options]
+   * @param {!ns.OptionsAndEncoderOptions} [options]
    * @returns {!Uint8Array}
    */
   // @ts-ignore
   encode(content, encoding, options) {
-    return this.getEncoding(encoding, options).encode(content);
+    return this.getEncoding(encoding, options).encode(content, options);
   }
 
   /**
+   * @override
    * @param {string} name
-   * @param {!encNS.Options} [options]
-   * @returns {!encNS.Encoding}
+   * @param {!ns.Options} [options]
+   * @returns {!ns.Encoding}
    */
+  // @ts-ignore
   getEncoding(name, options) {
     name = canonicalize(name);
-    const key = `${name}-${JSON.stringify(options)}`;
+    const key = name + (options?.overrides ?? "");
     let encoding = this.cache.get(key);
     if (!encoding) {
       const encodingFactory = this.encodingFactoryMap.get(name);
