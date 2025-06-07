@@ -1,5 +1,5 @@
 import { REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
-import { Charset, NativeDecoder } from "./cs.mjs";
+import { Charset, NativeDecoder, VariableLengthEncoder } from "./cs.mjs";
 
 const STRIP_BOM_DEFAULT = 1;
 const ADD_BOM_DEFAULT = 0;
@@ -79,11 +79,12 @@ class UTF8Decoder extends NativeDecoder {
 /**
  * @implements {ns.CharsetEncoder}
  */
-class UTF8Encoder {
+class UTF8Encoder extends VariableLengthEncoder {
   /**
    * @param {number} addBOM
    */
   constructor(addBOM) {
+    super();
     this.addBOM = addBOM;
     this.encoder = new TextEncoder();
   }
@@ -132,13 +133,14 @@ class UTF8Encoder {
  * UTF16/32 Encoder
  * @implements {ns.CharsetEncoder}
  */
-class UnicodeEncoder {
+class UnicodeEncoder extends VariableLengthEncoder {
   /**
    * @param {number} addBOM
    * @param {number} i - 0 for UTF-16, 1 for UTF-32
    * @param {number} bo - 0 for LE, 1 for BE
    */
   constructor(addBOM, i, bo) {
+    super();
     this.addBOM = addBOM;
     this.sz = SZ[i];
     this.put = PUTS[i][bo];

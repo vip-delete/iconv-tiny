@@ -82,6 +82,12 @@ const ns = {
      * @returns {!ns.TextEncoderEncodeIntoResult}
      */
     encodeInto(src, dst) {}
+
+    /**
+     * @param {string} src
+     * @returns {number}
+     */
+    byteLength(src) {}
   },
 
   /**

@@ -1,9 +1,9 @@
 # Changelog
 
-## [1.1.0] - 2025-06-07
+## [1.1.1] - 2025-06-07
 
 * Add Unicode support: UTF-8, UTF-16, UTF-32
-* Add methods: `IconvTiny.getEncoding`, `Encoding.newDecoder`, `Encoding.newEncoder`.
+* Add methods: `IconvTiny.getEncoding`, `Encoding.newDecoder`, `Encoding.newEncoder`, `CharsetEncoder.byteLength`.
 * Move `nativeDecode` and `defaultCharUnicode` options to `DecoderOptions`.
 * Move `defaultCharByte` option to `EncoderOptions`.
 * Delete `strictDecode` option: always use TextDecoder to convert Uint16Array to string.

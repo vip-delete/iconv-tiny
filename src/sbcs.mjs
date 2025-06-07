@@ -1,5 +1,5 @@
 import { DEFAULT_CHAR_BYTE, DEFAULT_NATIVE_DECODE, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
-import { NativeCharset } from "./cs.mjs";
+import { Charset, NativeDecoder } from "./cs.mjs";
 
 /**
  * @implements {ns.EncodingFactory}
@@ -59,9 +59,17 @@ function getMappings(symbols, diff) {
 }
 
 /**
+ * @param {string} charsetName
+ * @returns {!ns.CharsetDecoder}
+ */
+function nativeDecoder(charsetName) {
+  return new NativeDecoder(new TextDecoder(charsetName));
+}
+
+/**
  * @implements {ns.Encoding}
  */
-class SBCSCharset extends NativeCharset {
+class SBCSCharset extends Charset {
   /**
    * @param {string} charsetName
    * @param {!Uint16Array} b2c
@@ -74,7 +82,7 @@ class SBCSCharset extends NativeCharset {
      */
     this.c2b = null;
     try {
-      super.newDecoder();
+      nativeDecoder(this.charsetName);
       this.nativeSupported = true;
     } catch {
       this.nativeSupported = false;
@@ -90,7 +98,7 @@ class SBCSCharset extends NativeCharset {
   newDecoder(options) {
     const defaultCharUnicode = options?.defaultCharUnicode;
     if (this.nativeSupported && (options?.native ?? DEFAULT_NATIVE_DECODE)) {
-      return super.newDecoder();
+      return nativeDecoder(this.charsetName);
     }
     return new SBCSDecoder(this.b2c, defaultCharUnicode);
   }
@@ -222,5 +230,15 @@ class SBCSEncoder {
       dst[i] = b === REPLACEMENT_CHARACTER_CODE ? (handler(c, i) ?? DEFAULT_CHAR_BYTE) : b;
     }
     return { read: len, written: len };
+  }
+
+  /**
+   * @override
+   * @param {string} src
+   * @returns {number}
+   */
+  // @ts-ignore
+  byteLength(src) {
+    return src.length;
   }
 }

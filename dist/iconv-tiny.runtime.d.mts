@@ -1,6 +1,6 @@
 /**
  * Code generated. DO NOT EDIT.
- * This file is part of Iconv-Tiny v1.1.0
+ * This file is part of Iconv-Tiny v1.1.1
  * (c) 2025-present vip.delete
  * @license MIT
  **/
@@ -36,6 +36,12 @@ interface CharsetDecoder {
 interface CharsetEncoder {
   encode(text?: string): Uint8Array;
   encodeInto(src: string, dst: Uint8Array): TextEncoderEncodeIntoResult;
+  /**
+   * Similar to Buffer.byteLength;
+   * @param src input to calculate the length of
+   * @returns The number of bytes of the specified string
+   */
+  byteLength(src: string): number;
 }
 
 type TextEncoderEncodeIntoResult = {

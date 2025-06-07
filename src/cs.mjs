@@ -50,21 +50,6 @@ export class Charset {
 }
 
 /**
- * @abstract
- * @implements {ns.Encoding}
- */
-export class NativeCharset extends Charset {
-  /**
-   * @override
-   * @returns {!ns.CharsetDecoder}
-   */
-  // @ts-ignore
-  newDecoder() {
-    return new NativeDecoder(new TextDecoder(this.charsetName));
-  }
-}
-
-/**
  * @implements {ns.CharsetDecoder}
  */
 export class NativeDecoder {
@@ -83,5 +68,29 @@ export class NativeDecoder {
   // @ts-ignore
   decode(array) {
     return array ? this.decoder.decode(array, { stream: true }) : this.decoder.decode();
+  }
+}
+
+/**
+ * @abstract
+ * @implements {ns.CharsetEncoder}
+ */
+export class VariableLengthEncoder {
+  /**
+   * @override
+   * @param {string} text
+   * @returns {number}
+   */
+  byteLength(text) {
+    const len = text.length;
+    let read = 0;
+    let written = 0;
+    const buf = new Uint8Array(4096);
+    do {
+      const result = this.encodeInto(text, buf);
+      read += result.read;
+      written += result.written;
+    } while (read < len);
+    return written;
   }
 }

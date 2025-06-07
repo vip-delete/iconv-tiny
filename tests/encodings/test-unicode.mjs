@@ -110,6 +110,10 @@ test("UTF-8", () => {
   expect(utf8.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(6))).toStrictEqual({ read: 0, written: 3 });
   expect(utf8.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(7))).toStrictEqual({ read: 2, written: 7 });
 
+  expect(utf8.newEncoder().encode("😼")).toStrictEqual(new Uint8Array([0xf0, 0x9f, 0x98, 0xbc]));
+  expect(utf8.newEncoder().byteLength("😼")).toBe(4);
+  expect(utf8.newEncoder({ addBOM: true }).byteLength("😼")).toBe(7);
+
   expect(new TextEncoder().encodeInto("😼", new Uint8Array(0))).toStrictEqual({ read: 0, written: 0 });
   expect(new TextEncoder().encodeInto("😼", new Uint8Array(1))).toStrictEqual({ read: 0, written: 0 });
   expect(new TextEncoder().encodeInto("😼", new Uint8Array(2))).toStrictEqual({ read: 0, written: 0 });
@@ -189,6 +193,9 @@ test("UTF-16", () => {
   expect(utf16le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(2))).toStrictEqual({ read: 0, written: 2 });
   expect(utf16le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(3))).toStrictEqual({ read: 0, written: 2 });
   expect(utf16le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(4))).toStrictEqual({ read: 2, written: 6 });
+
+  expect(utf16le.newEncoder().byteLength("😼")).toBe(4);
+  expect(utf16le.newEncoder({ addBOM: true }).byteLength("😼")).toBe(6);
 });
 
 test("UTF-32", () => {
@@ -236,6 +243,9 @@ test("UTF-32", () => {
   expect(utf32le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(6))).toStrictEqual({ read: 0, written: 4 });
   expect(utf32le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(7))).toStrictEqual({ read: 0, written: 4 });
   expect(utf32le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(8))).toStrictEqual({ read: 2, written: 8 });
+
+  expect(utf32le.newEncoder().byteLength("😼")).toBe(4);
+  expect(utf32le.newEncoder({ addBOM: true }).byteLength("😼")).toBe(8);
 
   expect(utf32le.newDecoder().decode(new Uint8Array([0xff, 0xff, 0xff, 0xff]))).toBe("�");
 });

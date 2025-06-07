@@ -34,6 +34,12 @@ declare namespace ns {
   interface CharsetEncoder {
     encode(text?: string): Uint8Array;
     encodeInto(src: string, dst: Uint8Array): TextEncoderEncodeIntoResult;
+    /**
+     * Similar to Buffer.byteLength;
+     * @param src input to calculate the length of
+     * @returns The number of bytes of the specified string
+     */
+    byteLength(src: string): number;
   }
 
   type TextEncoderEncodeIntoResult = {

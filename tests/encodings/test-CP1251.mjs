@@ -88,6 +88,13 @@ test("CP1251 overrides 2", () => {
   expect(cp.decode(cp.encode("😀"))).toBe("😀");
 });
 
+test("CP1251 byteLength", () => {
+  const cp = CP.create();
+  expect(cp.newEncoder().byteLength("😀")).toBe(2);
+  expect(cp.newEncoder().byteLength("Привет")).toBe(6);
+  expect(cp.newEncoder().byteLength("你好")).toBe(2); // 2 code units
+});
+
 test("CP1251 TextDecoder", () => {
   const buffer = new Uint8Array(256);
   for (let i = 0; i < 255; i++) {
