@@ -18,9 +18,7 @@
   "author": "vip.delete",
   "files": [
     "dist/**",
-    "demo.png",
     "LICENSE",
-    "CHANGELOG.md",
     "README.md"
   ],
   "exports": {
