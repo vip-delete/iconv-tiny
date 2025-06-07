@@ -26,8 +26,9 @@ export class IconvTiny {
        */
       const encoding = encodings[key];
       // check that "encoding" is EncodingFactory
+      // it can be anything if: import * as encodings from 'iconv-tiny.bundle.mjs'
       // @ts-ignore
-      if (encoding.create) {
+      if (encoding?.create) {
         const name = canonicalize(key);
         encodingFactoryMap.set(name, encoding);
         config.filter((row) => row.includes(name)).forEach((row) => row.forEach((alias) => encodingFactoryMap.set(alias, encoding)));

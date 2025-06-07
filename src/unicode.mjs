@@ -332,7 +332,7 @@ function put16BE(src, i, dst, j) {
  * @returns {number}
  */
 function put32LE(src, i, dst, j) {
-  const c = src.codePointAt(i) ?? 0;
+  const c = /** @type {number} */ (src.codePointAt(i));
   dst[j] = c;
   dst[j + 1] = c >> 8;
   dst[j + 2] = c >> 16;
@@ -348,7 +348,7 @@ function put32LE(src, i, dst, j) {
  * @returns {number}
  */
 function put32BE(src, i, dst, j) {
-  const c = src.codePointAt(i) ?? 0;
+  const c = /** @type {number} */ (src.codePointAt(i));
   dst[j] = c >> 24;
   dst[j + 1] = c >> 16;
   dst[j + 2] = c >> 8;

@@ -26,6 +26,23 @@ test("iconvTiny", () => {
 });
 
 test("iconvTiny 2", () => {
+  const encodings1 = /** @type {any} */ ({ CP1251, "12": null, "test": "123" });
+  const iconvTiny = new IconvTiny(encodings1);
+  try {
+    iconvTiny.encode("Hello", "12");
+    throw new Error();
+  } catch (e) {
+    expect(/** @type {Error} */ (e).message).toBe(`Encoding "12" not supported`);
+  }
+  try {
+    iconvTiny.encode("Hello", "test");
+    throw new Error();
+  } catch (e) {
+    expect(/** @type {Error} */ (e).message).toBe(`Encoding "test" not supported`);
+  }
+});
+
+test("iconvTiny 2", () => {
   const iconvTiny = new IconvTiny({ CP1251, ISO_8859_15 });
   expect(iconvTiny.decode(new Uint8Array([164]), "iso8859-15")).toBe("€");
   expect(iconvTiny.decode(new Uint8Array([190]), "iso-885915")).toBe("Ÿ");

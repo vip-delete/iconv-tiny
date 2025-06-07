@@ -27,6 +27,18 @@ Pure JS ESM Encodings Set for Browser and NodeJS. Auto-Generated from http://www
 npm install iconv-tiny
 ```
 
+```javascript
+import { IconvTiny } from "iconv-tiny";
+import { aliases } from "iconv-tiny/aliases";
+import * as encodings from "iconv-tiny/encodings";
+
+const iconvTiny = new IconvTiny(encodings, aliases);
+const buf = iconvTiny.encode("Hello", "UTF-16");
+console.log(buf); // Uint8Array(10) [72, 0, 101, 0, 108, 0, 108, 0, 111, 0]
+const str = iconvTiny.decode(buf, "UTF-16");
+console.log(str); // Hello
+```
+
 or directly import from CDN without installation:
 ```javascript
 import { IconvTiny, aliases, encodings } from "https://unpkg.com/iconv-tiny@1.1.0/dist/iconv-tiny.bundle.mjs";
@@ -53,7 +65,7 @@ Build:
 ```
 npm run build
 ```
-Note: you need JDK 21+ installed to compile the source code using Google Closure Compiler
+Note: You need JDK 21 or higher installed to compile the source code using the Google Closure Compiler.
 
 Run tests:
 ```

@@ -42,7 +42,7 @@
     "compile": "node scripts/compile.mjs",
     "coverage": "vitest run --coverage coverage.mjs",
     "test": "vitest run",
-    "build": "npm run lint && npm run clean && npm run compile && npm run generate && npm run test",
+    "build": "npm run lint && npm run clean && npm run compile && npm run generate && npm run test && npm run coverage",
     "dev": "node scripts/server.js"
   },
   "devDependencies": {
