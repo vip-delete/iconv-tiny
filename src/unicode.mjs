@@ -81,11 +81,11 @@ class UTF8Decoder extends NativeDecoder {
  */
 class UTF8Encoder extends VariableLengthEncoder {
   /**
-   * @param {number} addBOM
+   * @param {number} doBOM
    */
-  constructor(addBOM) {
+  constructor(doBOM) {
     super();
-    this.addBOM = addBOM;
+    this.doBOM = doBOM;
     this.encoder = new TextEncoder();
   }
 
@@ -99,7 +99,7 @@ class UTF8Encoder extends VariableLengthEncoder {
     if (!text) {
       return new Uint8Array(0);
     }
-    const buf = new Uint8Array((this.addBOM ? 4 : 0) + text.length * 4);
+    const buf = new Uint8Array((this.doBOM ? 4 : 0) + text.length * 4);
     const { written } = this.encodeInto(text, buf);
     return buf.subarray(0, written);
   }
@@ -112,9 +112,9 @@ class UTF8Encoder extends VariableLengthEncoder {
    */
   // @ts-ignore
   encodeInto(src, dst) {
-    const { addBOM } = this;
+    const { doBOM } = this;
     let j = 0;
-    if (addBOM) {
+    if (doBOM) {
       if (dst.length < 3) {
         return { read: 0, written: 0 };
       }
@@ -122,7 +122,7 @@ class UTF8Encoder extends VariableLengthEncoder {
       dst[1] = 0xbb;
       dst[2] = 0xbf;
       j += 3;
-      this.addBOM = 0;
+      this.doBOM = 0;
     }
     const { read, written } = this.encoder.encodeInto(src, dst.subarray(j));
     return { read, written: written + j };
@@ -135,13 +135,13 @@ class UTF8Encoder extends VariableLengthEncoder {
  */
 class UnicodeEncoder extends VariableLengthEncoder {
   /**
-   * @param {number} addBOM
+   * @param {number} doBOM
    * @param {number} i - 0 for UTF-16, 1 for UTF-32
    * @param {number} bo - 0 for LE, 1 for BE
    */
-  constructor(addBOM, i, bo) {
+  constructor(doBOM, i, bo) {
     super();
-    this.addBOM = addBOM;
+    this.doBOM = doBOM;
     this.sz = SZ[i];
     this.put = PUTS[i][bo];
   }
@@ -159,7 +159,7 @@ class UnicodeEncoder extends VariableLengthEncoder {
     const sz = this.sz;
     // UTF-16: each code unit is encoded by sz=2 bytes
     // UTF-32: each code unit is encoded either by sz=4 bytes or, 2 code units are encoded by sz=4 bytes (it may be less)
-    const buf = new Uint8Array((this.addBOM ? sz : 0) + text.length * sz);
+    const buf = new Uint8Array((this.doBOM ? sz : 0) + text.length * sz);
     const { written } = this.encodeInto(text, buf);
     return buf.subarray(0, written);
   }
@@ -172,15 +172,15 @@ class UnicodeEncoder extends VariableLengthEncoder {
    */
   // @ts-ignore
   encodeInto(src, dst) {
-    const { addBOM, sz, put } = this;
+    const { doBOM, sz, put } = this;
     let j = 0;
-    if (addBOM) {
+    if (doBOM) {
       if (dst.length < sz) {
         return { read: 0, written: 0 };
       }
       put("\ufeff", 0, dst, j);
       j += sz;
-      this.addBOM = 0;
+      this.doBOM = 0;
     }
     const len = Math.min(src.length, (dst.length - j) & ~(sz - 1));
     for (let i = 0; i < len; i++, j += sz) {
