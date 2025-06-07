@@ -113,6 +113,19 @@ test("UTF-8", () => {
   expect(utf8.newEncoder().encode("😼")).toStrictEqual(new Uint8Array([0xf0, 0x9f, 0x98, 0xbc]));
   expect(utf8.newEncoder().byteLength("😼")).toBe(4);
   expect(utf8.newEncoder({ addBOM: true }).byteLength("😼")).toBe(7);
+  expect(utf8.newEncoder().byteLength("A€😀")).toBe(1 + 3 + 4);
+  expect(utf8.newEncoder().byteLength("")).toBe(0);
+  expect(utf8.newEncoder({ addBOM: true }).byteLength("")).toBe(3);
+
+  const big1 = "😼".repeat(10000);
+  expect(new TextEncoder().encode(big1).length).toBe(4 * 10000);
+  expect(utf8.newEncoder().byteLength(big1)).toBe(4 * 10000);
+  expect(utf8.newEncoder({ addBOM: true }).byteLength(big1)).toBe(3 + 4 * 10000);
+
+  const big2 = "€".repeat(10000);
+  expect(new TextEncoder().encode(big2).length).toBe(3 * 10000);
+  expect(utf8.newEncoder().byteLength(big2)).toBe(3 * 10000);
+  expect(utf8.newEncoder({ addBOM: true }).byteLength(big2)).toBe(3 + 3 * 10000);
 
   expect(new TextEncoder().encodeInto("😼", new Uint8Array(0))).toStrictEqual({ read: 0, written: 0 });
   expect(new TextEncoder().encodeInto("😼", new Uint8Array(1))).toStrictEqual({ read: 0, written: 0 });

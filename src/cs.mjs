@@ -82,15 +82,13 @@ export class VariableLengthEncoder {
    * @returns {number}
    */
   byteLength(text) {
-    const len = text.length;
-    let read = 0;
-    let written = 0;
+    let total = 0;
     const buf = new Uint8Array(4096);
     do {
-      const result = this.encodeInto(text, buf);
-      read += result.read;
-      written += result.written;
-    } while (read < len);
-    return written;
+      const { read, written } = this.encodeInto(text, buf);
+      text = text.slice(read);
+      total += written;
+    } while (text.length);
+    return total;
   }
 }
