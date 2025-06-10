@@ -1,4 +1,4 @@
-import { CP1252 } from "iconv-tiny/encodings";
+import { CP1252 } from "iconv-tiny";
 
 // There are 5 UNDEFINED bytes in CP1252:
 const buf = new Uint8Array([0x81, 0x8d, 0x8f, 0x90, 0x9d]);

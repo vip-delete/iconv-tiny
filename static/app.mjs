@@ -1,6 +1,4 @@
-import { IconvTiny } from "iconv-tiny";
-import { aliases } from "iconv-tiny/aliases";
-import * as encodings from "iconv-tiny/encodings";
+import { IconvTiny, aliases, encodings } from "iconv-tiny";
 import { computed, createApp, onBeforeUnmount, onMounted, ref } from "vue";
 
 const iconv = new IconvTiny(encodings, aliases);

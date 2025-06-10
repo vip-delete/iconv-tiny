@@ -1,4 +1,4 @@
-import { CP437, CP864 } from "iconv-tiny/encodings";
+import { CP437, CP864 } from "iconv-tiny";
 
 // A range 0x00..0x1F is mapped to Unicode "as-is":
 // 0 (NULL) to U+0000, 9 (TAB) to U+0009, ...
@@ -17,14 +17,14 @@ for (let i = 0; i < 256; i++) {
  * @param {string} graphics
  * @returns {!Array<number|string>}
  */
-function createOverrides(graphics) {
+const createOverrides = (graphics) => {
   const overrides = [];
   for (let i = 0; i < graphics.length; i++) {
     overrides.push(i);
     overrides.push(graphics[i]);
   }
   return overrides;
-}
+};
 
 /**
  * Specifies the alternative symbols for the first 32 control bytes.

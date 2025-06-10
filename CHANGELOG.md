@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.0] - 2025-06-14
+
+* Make Closure Compiler optional, Add ESBuild and produce [**iconv-tiny.mjs**](dist/iconv-tiny.mjs) only.
+
 ## [1.1.1] - 2025-06-07
 
 * Add Unicode support: UTF-8, UTF-16, UTF-32

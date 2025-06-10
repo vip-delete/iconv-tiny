@@ -1,4 +1,4 @@
-import { UTF16BE, UTF16LE, UTF32BE, UTF32LE, UTF8 } from "iconv-tiny/encodings";
+import { UTF16BE, UTF16LE, UTF32BE, UTF32LE, UTF8 } from "iconv-tiny";
 import { expect, test } from "vitest";
 
 const tests = [
@@ -65,18 +65,18 @@ const tests = [
 ];
 
 /**
- * @param {!import("../../dist/iconv-tiny.runtime.d.mts").Encoding} encoding
+ * @param {!ns.Encoding} encoding
  * @param {!Uint8Array} array
  * @returns {string}
  */
-function decodeStream(encoding, array) {
+const decodeStream = (encoding, array) => {
   const decoder = encoding.newDecoder();
   let str = "";
   for (let i = 0; i < array.length; i++) {
     str += decoder.decode(new Uint8Array([array[i]]));
   }
   return str + decoder.decode();
-}
+};
 
 test("UTF-8", () => {
   const utf8 = UTF8.create();
@@ -207,6 +207,8 @@ test("UTF-16", () => {
   expect(utf16le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(3))).toStrictEqual({ read: 0, written: 2 });
   expect(utf16le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(4))).toStrictEqual({ read: 2, written: 6 });
 
+  expect(utf16le.newEncoder().byteLength("1")).toBe(2);
+  expect(utf16le.newEncoder().byteLength("11")).toBe(4);
   expect(utf16le.newEncoder().byteLength("😼")).toBe(4);
   expect(utf16le.newEncoder({ addBOM: true }).byteLength("😼")).toBe(6);
 });
@@ -257,6 +259,8 @@ test("UTF-32", () => {
   expect(utf32le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(7))).toStrictEqual({ read: 0, written: 4 });
   expect(utf32le.newEncoder({ addBOM: true }).encodeInto("😼", new Uint8Array(8))).toStrictEqual({ read: 2, written: 8 });
 
+  expect(utf32le.newEncoder().byteLength("1")).toBe(4);
+  expect(utf32le.newEncoder().byteLength("11")).toBe(8);
   expect(utf32le.newEncoder().byteLength("😼")).toBe(4);
   expect(utf32le.newEncoder({ addBOM: true }).byteLength("😼")).toBe(8);
 

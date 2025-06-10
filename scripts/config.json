@@ -59,15 +59,15 @@
         "path": "/VENDORS/MICSFT/WINDOWS/CP{ID}.TXT",
         "name": "CP{ID}",
         "ids": [
-          "1250 windows-1250 cp1250 cp5346",
-          "1251 windows-1251 cp1251 cp5347 ansi-1251",
-          "1252 windows-1252 cp1252 cp5348 ibm-1252 ibm1252",
-          "1253 windows-1253 cp1253 cp5349",
-          "1254 windows-1254 cp1254 cp5350",
-          "1255 windows-1255 cp1255",
-          "1256 windows-1256 cp1256",
-          "1257 windows-1257 cp1257 cp5353",
-          "1258 windows-1258 cp1258"
+          "1250 win1250 windows-1250 cp1250 cp5346",
+          "1251 win1251 windows-1251 cp1251 cp5347 ansi-1251",
+          "1252 win1252 windows-1252 cp1252 cp5348 ibm-1252 ibm1252",
+          "1253 win1253 windows-1253 cp1253 cp5349",
+          "1254 win1254 windows-1254 cp1254 cp5350",
+          "1255 win1255 windows-1255 cp1255",
+          "1256 win1256 windows-1256 cp1256",
+          "1257 win1257 windows-1257 cp1257 cp5353",
+          "1258 win1258 windows-1258 cp1258"
         ]
       },
       {

@@ -6,7 +6,7 @@
       "request": "launch",
       "name": "Debug Vitest",
       "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
-      "args": ["run", "--pool=threads", "--poolOptions.threads.singleThread", "--testTimeout=0", "coverage.mjs"],
+      "args": ["run", "--pool=threads", "--poolOptions.threads.singleThread", "--testTimeout=0", "main.test.mjs"],
       "autoAttachChildProcesses": true,
       "console": "integratedTerminal"
     }

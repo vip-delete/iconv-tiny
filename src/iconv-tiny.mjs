@@ -1,4 +1,14 @@
 /**
+ * @param {string} encoding
+ * @returns {string}
+ */
+export const canonicalize = (encoding) =>
+  encoding
+    .toLowerCase()
+    .replace(/[^a-z0-9]/gu, "")
+    .replace(/(?<!\d)0+/gu, "");
+
+/**
  * @implements {ns.IconvTiny}
  */
 export class IconvTiny {
@@ -11,7 +21,7 @@ export class IconvTiny {
     /**
      * @type {!Map<string, !ns.EncodingFactory>}
      */
-    const encodingFactoryMap = new Map();
+    this.encodingFactoryMap = new Map();
     /**
      * @type {!Map<string, !ns.Encoding>}
      */
@@ -26,15 +36,13 @@ export class IconvTiny {
        */
       const encoding = encodings[key];
       // check that "encoding" is EncodingFactory
-      // it can be anything if: import * as encodings from 'iconv-tiny.bundle.mjs'
-      // @ts-ignore
+      // @ts-expect-error
       if (encoding?.create) {
         const name = canonicalize(key);
-        encodingFactoryMap.set(name, encoding);
-        config.filter((row) => row.includes(name)).forEach((row) => row.forEach((alias) => encodingFactoryMap.set(alias, encoding)));
+        this.encodingFactoryMap.set(name, encoding);
+        config.filter((row) => row.includes(name)).forEach((row) => row.forEach((alias) => this.encodingFactoryMap.set(alias, encoding)));
       }
     }
-    this.encodingFactoryMap = encodingFactoryMap;
   }
 
   /**
@@ -44,7 +52,7 @@ export class IconvTiny {
    * @param {!ns.OptionsAndDecoderOptions} [options]
    * @returns {string}
    */
-  // @ts-ignore
+  // @ts-expect-error
   decode(array, encoding, options) {
     return this.getEncoding(encoding, options).decode(array, options);
   }
@@ -56,7 +64,7 @@ export class IconvTiny {
    * @param {!ns.OptionsAndEncoderOptions} [options]
    * @returns {!Uint8Array}
    */
-  // @ts-ignore
+  // @ts-expect-error
   encode(content, encoding, options) {
     return this.getEncoding(encoding, options).encode(content, options);
   }
@@ -67,7 +75,7 @@ export class IconvTiny {
    * @param {!ns.Options} [options]
    * @returns {!ns.Encoding}
    */
-  // @ts-ignore
+  // @ts-expect-error
   getEncoding(name, options) {
     name = canonicalize(name);
     const key = name + (options?.overrides ?? "");
@@ -82,18 +90,4 @@ export class IconvTiny {
     }
     return encoding;
   }
-}
-
-/**
- * Converts an encoding name to a normalized, unique name.
- * Removes non-alphanumeric characters and leading zeros.
- * For more details, refer to: https://www.unicode.org/reports/tr22/tr22-8.html#Charset_Alias_Matching
- * @param {string} encoding
- * @returns {string}
- */
-export function canonicalize(encoding) {
-  return encoding
-    .toLowerCase()
-    .replace(/[^a-z0-9]/gu, "")
-    .replace(/(?<!\d)0+/gu, "");
 }

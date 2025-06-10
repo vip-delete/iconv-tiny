@@ -1,6 +1,4 @@
-import { IconvTiny } from "iconv-tiny";
-import { aliases } from "iconv-tiny/aliases";
-import * as encodings from "iconv-tiny/encodings";
+import { IconvTiny, aliases, encodings } from "iconv-tiny";
 
 // This is a simple example of the non-direct usage.
 // We pass a list of encodings and their aliases.

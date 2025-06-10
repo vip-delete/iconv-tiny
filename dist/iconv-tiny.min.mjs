@@ -1,0 +1,87 @@
+/**
+ * iconv-tiny v1.2.0
+ * (c) 2025-present vip.delete
+ * @license MIT
+ **/
+let ns;
+new TextDecoder("UTF-16LE",{fatal:!0});class k{constructor(a){this.h=a}getName(){return this.h}decode(a,b){b=this.newDecoder(b);return b.decode(a)+b.decode()}encode(a,b){return this.newEncoder(b).encode(a)}}class l{constructor(a){this.g=a}decode(a){return this.g.decode(a,{stream:!!a})}}
+class m{encode(a){if(!a)return new Uint8Array(0);const b=new Uint8Array(this.g(a));({written:a}=this.encodeInto(a,b));return b.subarray(0,a)}byteLength(a){let b=0;const c=new Uint8Array(4096);do{const {read:d,written:e}=this.encodeInto(a,c);a=a.slice(d);b+=e}while(a.length);return b}};class n{constructor(a,b){this.g=a;if(typeof b!=="function"){const c=b?.length?b.charCodeAt(0):65533;b=()=>c}this.h=b}decode(a){if(!a)return"";const b=this.g,c=this.h,d=a.length,e=new Uint16Array(d);for(let f=0;f<d;f++){const g=a[f],h=b[g];e[f]=h===65533?c(g,f)??h:h}return(new TextDecoder("UTF-16LE")).decode(e)}}
+class p extends m{constructor(a,b){super();this.h=a;if(typeof b!=="function"){const c=b?.length?b.charCodeAt(0):63;b=()=>c}this.i=b}encodeInto(a,b){const c=this.h,d=this.i,e=Math.min(a.length,b.length);for(let f=0;f<e;f++){const g=a.charCodeAt(f),h=c[g];b[f]=h===65533?d(g,f)??63:h}return{read:e,written:e}}g(a){return a.length}byteLength(a){return this.g(a)}}
+class q extends k{constructor(a,b){super(a);this.i=b;this.g=null;try{new TextDecoder(this.h),this.j=!0}catch{this.j=!1}}newDecoder(a){return this.j&&(a?.native??!1)?new l(new TextDecoder(this.h)):new n(this.i,a?.defaultCharUnicode)}newEncoder(a){if(!this.g){this.g=(new Uint16Array(65536)).fill(65533);for(let b=0;b<256;b++){const c=this.i[b];c!==65533&&(this.g[c]=b)}}return new p(this.g,a?.defaultCharByte)}}
+class r{constructor(a,b,c){this.g=a;this.h=b;this.i=c}create(a){var b=this.h,c=this.i??"";const d=(new Uint16Array(256)).fill(65533);for(var e=0;e<256-b.length;)d[e]=e++;let f=0;for(;e<256;)d[e++]=b.charCodeAt(f++);for(b=0;b<c.length;)d[c.charCodeAt(b)]=c.charCodeAt(b+1),b+=2;a=a?.overrides??[];for(c=0;c<a.length-1;)b=a[c++],e=a[c++],d[Number(b)]=typeof e==="number"?e:e.charCodeAt(0);return new q(this.g,d)}};const t=(a,b,c,d)=>{a=a.charCodeAt(b);c[d]=a;c[d+1]=a>>8;return 0},u=(a,b,c,d)=>{a=a.charCodeAt(b);c[d]=a>>8;c[d+1]=a;return 0},v=(a,b,c,d)=>{a=a.codePointAt(b);c[d]=a;c[d+1]=a>>8;c[d+2]=a>>16;c[d+3]=a>>24;return a>65535?1:0},w=(a,b,c,d)=>{a=a.codePointAt(b);c[d]=a>>24;c[d+1]=a>>16;c[d+2]=a>>8;c[d+3]=a;return a>65535?1:0},x=(a,b)=>(a[b]|a[b+1]<<8|a[b+2]<<16|a[b+3]<<24)>>>0,y=(a,b)=>(a[b]<<24|a[b+1]<<16|a[b+2]<<8|a[b+3])>>>0,z=(a,b,c)=>{c>1114111&&(c=65533);if(c>65535){c-=65536;const d=55296|c>>10;
+c=56320|c&1023;a[b]=d;a[b+1]=d>>8;a[b+2]=c;a[b+3]=c>>8;return 4}a[b]=c;a[b+1]=c>>8;return 2};class A extends l{constructor(a){super(new TextDecoder("UTF-8",{ignoreBOM:a}))}}class B extends m{constructor(a){super();this.h=a;this.i=new TextEncoder}encodeInto(a,b){let c=0;if(this.h){if(b.length<3)return{read:0,written:0};b[0]=239;b[1]=187;b[2]=191;c+=3;this.h=0}const {read:d,written:e}=this.i.encodeInto(a,b.subarray(c));return{read:d,written:e+c}}g(a){return(this.h?4:0)+a.length*4}}
+class C extends m{constructor(a,b,c){super();this.i=a;this.h=1<<b+1;this.j=b?c?w:v:c?u:t}encodeInto(a,b){const c=this.h,d=this.j;let e=0;if(this.i){if(b.length<c)return{read:0,written:0};d("﻿",0,b,e);e+=c;this.i=0}const f=Math.min(a.length,b.length-e&~(c-1));for(let g=0;g<f;g++,e+=c)g+=d(a,g,b,e);return{read:f,written:e}}g(a){return(this.i?this.h:0)+a.length*this.h}byteLength(a){return this.h===4?super.byteLength(a):this.g(a)}}const D=["LE","BE",""],E=[16,32,8];
+class F extends l{constructor(a,b){super(new TextDecoder("UTF-16"+D[b],{ignoreBOM:a}))}}
+class G{constructor(a,b){this.j=a;this.h=new Uint8Array(4);this.g=0;this.i=b?y:x}decode(a){if(!a)return this.g?String.fromCharCode(65533):"";const b=new Uint8Array(a.length+4);let c=0,d=0;if(this.g){for(;this.g<4&&c<a.length;)this.h[this.g++]=a[c++];if(this.g<4)return"";d+=z(b,d,this.i(this.h,0))}const e=a.length-3;for(;c<e;c+=4)d+=z(b,d,this.i(a,c));(this.g=a.length-c)&&this.h.set(a.subarray(c));return(new TextDecoder("UTF-16",{ignoreBOM:this.j})).decode(b.subarray(0,d))}}
+const H=[F,G,A],I=[C,C,B];class J extends k{constructor(a,b){super("UTF-"+E[a]+D[b]);this.g=a;this.i=b}newDecoder(a){return new H[this.g](!(a?.stripBOM??1),this.i)}newEncoder(a){return new I[this.g](a?.addBOM??0,this.g,this.i)}}class K{constructor(a,b){this.h=a;this.g=b}create(){return new J(this.h,this.g)}};const L=a=>a.toLowerCase().replace(/[^a-z0-9]/gu,"").replace(/(?<!\d)0+/gu,"");
+class M{constructor(a,b){a??={};this.g=new Map;this.cache=new Map;b=(b??"").split(",").map(c=>c.split(" ").map(L));for(const c of Object.keys(a)){const d=a[c];if(d?.create){const e=L(c);this.g.set(e,d);b.filter(f=>f.includes(e)).forEach(f=>f.forEach(g=>this.g.set(g,d)))}}}decode(a,b,c){return this.getEncoding(b,c).decode(a,c)}encode(a,b,c){return this.getEncoding(b,c).encode(a,c)}getEncoding(a,b){a=L(a);const c=a+(b?.overrides??"");var d=this.cache.get(c);if(!d){d=this.g.get(a);if(!d)throw Error(`Encoding "${a}" not supported`);
+d=d.create(b);this.cache.set(c,d)}return d}};ns={canonicalize:L,IconvTiny:M,SBCS:r,Unicode:K};
+export const {canonicalize,IconvTiny,SBCS,Unicode}=ns;
+
+export const
+ISO_8859_1=new SBCS("ISO-8859-1",""),
+ISO_8859_2=new SBCS("ISO-8859-2","Ą˘Ł¤ĽŚ§¨ŠŞŤŹ­ŽŻ°ą˛ł´ľśˇ¸šşťź˝žżŔÁÂĂÄĹĆÇČÉĘËĚÍÎĎĐŃŇÓÔŐÖ×ŘŮÚŰÜÝŢßŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"),
+ISO_8859_3=new SBCS("ISO-8859-3","ŭŝ˙","¡Ħ¢˘¥�¦Ĥ©İªŞ«Ğ¬Ĵ®�¯Ż±ħ¶ĥ¹ıºş»ğ¼ĵ¾�¿żÃ�ÅĊÆĈÐ�ÕĠØĜÝŬÞŜã�åċæĉð�õġøĝ"),
+ISO_8859_4=new SBCS("ISO-8859-4","ĄĸŖ¤ĨĻ§¨ŠĒĢŦ­Ž¯°ą˛ŗ´ĩļˇ¸šēģŧŊžŋĀÁÂÃÄÅÆĮČÉĘËĖÍÎĪĐŅŌĶÔÕÖ×ØŲÚÛÜŨŪßāáâãäåæįčéęëėíîīđņōķôõö÷øųúûüũū˙"),
+ISO_8859_5=new SBCS("ISO-8859-5","ЁЂЃЄЅІЇЈЉЊЋЌ­ЎЏАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя№ёђѓєѕіїјљњћќ§ўџ"),
+ISO_8859_6=new SBCS("ISO-8859-6","���¤�������،­�������������؛���؟�ءآأؤإئابةتثجحخدذرزسشصضطظعغ�����ـفقكلمنهوىيًٌٍَُِّْ�������������"),
+ISO_8859_7=new SBCS("ISO-8859-7","΄΅Ά·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ�ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ�","¡‘¢’¤€¥₯ªͺ®�¯―"),
+ISO_8859_8=new SBCS("ISO-8859-8","��������������������������������‗אבגדהוזחטיךכלםמןנסעףפץצקרשת��‎‏�","¡�ª×º÷"),
+ISO_8859_9=new SBCS("ISO-8859-9","ışÿ","ÐĞÝİÞŞðğ"),
+ISO_8859_10=new SBCS("ISO-8859-10","ĸ","¡Ą¢Ē£Ģ¤Ī¥Ĩ¦Ķ¨Ļ©ĐªŠ«Ŧ¬Ž®Ū¯Ŋ±ą²ē³ģ´īµĩ¶ķ¸ļ¹đºš»ŧ¼ž½―¾ū¿ŋÀĀÇĮÈČÊĘÌĖÑŅÒŌ×ŨÙŲàāçįèčêęìėñņòō÷ũùų"),
+ISO_8859_11=new SBCS("ISO-8859-11","กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู����฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛����"),
+ISO_8859_13=new SBCS("ISO-8859-13","æĄĮĀĆÄÅĘĒČÉŹĖĢĶĪĻŠŃŅÓŌÕÖ×ŲŁŚŪÜŻŽßąįāćäåęēčéźėģķīļšńņóōõö÷ųłśūüżž’","¡”¥„¨ØªŖ¯Æ´“¸øºŗ"),
+ISO_8859_14=new SBCS("ISO-8859-14","ŷÿ","¡Ḃ¢ḃ¤Ċ¥ċ¦Ḋ¨ẀªẂ«ḋ¬Ỳ¯Ÿ°Ḟ±ḟ²Ġ³ġ´Ṁµṁ·Ṗ¸ẁ¹ṗºẃ»Ṡ¼ỳ½Ẅ¾ẅ¿ṡÐŴ×ṪÞŶðŵ÷ṫ"),
+ISO_8859_15=new SBCS("ISO-8859-15","","¤€¦Š¨š´Ž¸ž¼Œ½œ¾Ÿ"),
+ISO_8859_16=new SBCS("ISO-8859-16","ęțÿ","¡Ą¢ą£Ł¤€¥„¦Š¨šªȘ¬Ź®ź¯Ż²Č³ł´Žµ”¸ž¹čºș¼Œ½œ¾Ÿ¿żÃĂÅĆÐĐÑŃÕŐ×ŚØŰÝĘÞȚãăåćðđñńõő÷śøű"),
+CP037=new SBCS("CP037","\t\x7F\v\f\r\n \xA0âäàáãåçñ¢.<(+|&éêëèíîïìß!$*);¬-/ÂÄÀÁÃÅÇÑ¦,%_>?øÉÊËÈÍÎÏÌ`:#@'=\"Øabcdefghi«»ðýþ±°jklmnopqrªºæ¸Æ¤µ~stuvwxyz¡¿ÐÝÞ®^£¥·©§¶¼½¾[]¯¨´×{ABCDEFGHI­ôöòóõ}JKLMNOPQR¹ûüùúÿ\\÷STUVWXYZ²ÔÖÒÓÕ0123456789³ÛÜÙÚ"),
+CP500=new SBCS("CP500","\t\x7F\v\f\r\n \xA0âäàáãåçñ[.<(+!&éêëèíîïìß]$*);^-/ÂÄÀÁÃÅÇÑ¦,%_>?øÉÊËÈÍÎÏÌ`:#@'=\"Øabcdefghi«»ðýþ±°jklmnopqrªºæ¸Æ¤µ~stuvwxyz¡¿ÐÝÞ®¢£¥·©§¶¼½¾¬|¯¨´×{ABCDEFGHI­ôöòóõ}JKLMNOPQR¹ûüùúÿ\\÷STUVWXYZ²ÔÖÒÓÕ0123456789³ÛÜÙÚ"),
+CP875=new SBCS("CP875","\t\x7F\v\f\r\n ΑΒΓΔΕΖΗΘΙ[.<(+!&ΚΛΜΝΞΟΠΡΣ]$*);^-/ΤΥΦΧΨΩΪΫ|,%_>?¨ΆΈΉ\xA0ΊΌΎΏ`:#@'=\"΅abcdefghiαβγδεζ°jklmnopqrηθικλμ´~stuvwxyzνξοπρσ£άέήϊίόύϋώςτυφχψ{ABCDEFGHI­ωΐΰ‘―}JKLMNOPQR±½�·’¦\\₯STUVWXYZ²§ͺ�«¬0123456789³©€�»"),
+CP1026=new SBCS("CP1026","\t\x7F\v\f\r\n \xA0âäàáãå{ñÇ.<(+!&éêëèíîïìßĞİ*);^-/ÂÄÀÁÃÅ[Ñş,%_>?øÉÊËÈÍÎÏÌı:ÖŞ'=ÜØabcdefghi«»}`¦±°jklmnopqrªºæ¸Æ¤µöstuvwxyz¡¿]$@®¢£¥·©§¶¼½¾¬|¯¨´×çABCDEFGHI­ô~òóõğJKLMNOPQR¹û\\ùúÿü÷STUVWXYZ²Ô#ÒÓÕ0123456789³Û\"ÙÚ"),
+CP437=new SBCS("CP437","ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\xA0"),
+CP737=new SBCS("CP737","ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρσςτυφχψ░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀ωάέήϊίόύϋώΆΈΉΊΌΎΏ±≥≤ΪΫ÷≈°∙·√ⁿ²■\xA0"),
+CP775=new SBCS("CP775","ĆüéāäģåćłēŖŗīŹÄÅÉæÆōöĢ¢ŚśÖÜø£Ø×¤ĀĪóŻżź”¦©®¬½¼Ł«»░▒▓│┤ĄČĘĖ╣║╗╝ĮŠ┐└┴┬├─┼ŲŪ╚╔╩╦╠═╬Žąčęėįšųūž┘┌█▄▌▐▀ÓßŌŃõÕµńĶķĻļņĒŅ’­±“¾¶§÷„°∙·¹³²■\xA0"),
+CP850=new SBCS("CP850","ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø×ƒáíóúñÑªº¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ðÐÊËÈıÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµþÞÚÛÙýÝ¯´­±‗¾¶§÷¸°¨·¹³²■\xA0"),
+CP852=new SBCS("CP852","ÇüéâäůćçłëŐőîŹÄĆÉĹĺôöĽľŚśÖÜŤťŁ×čáíóúĄąŽžĘę¬źČş«»░▒▓│┤ÁÂĚŞ╣║╗╝Żż┐└┴┬├─┼Ăă╚╔╩╦╠═╬¤đĐĎËďŇÍÎě┘┌█▄ŢŮ▀ÓßÔŃńňŠšŔÚŕŰýÝţ´­˝˛ˇ˘§÷¸°¨˙űŘř■\xA0"),
+CP855=new SBCS("CP855","ђЂѓЃёЁєЄѕЅіІїЇјЈљЉњЊћЋќЌўЎџЏюЮъЪаАбБцЦдДеЕфФгГ«»░▒▓│┤хХиИ╣║╗╝йЙ┐└┴┬├─┼кК╚╔╩╦╠═╬¤лЛмМнНоОп┘┌█▄Пя▀ЯрРсСтТуУжЖвВьЬ№­ыЫзЗшШэЭщЩчЧ§■\xA0"),
+CP857=new SBCS("CP857","ÇüéâäàåçêëèïîıÄÅÉæÆôöòûùİÖÜø£ØŞşáíóúñÑĞğ¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ºªÊËÈ�ÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµ�×ÚÛÙìÿ¯´­±�¾¶§÷¸°¨·¹³²■\xA0"),
+CP860=new SBCS("CP860","ÇüéâãàÁçêÊèÍÔìÃÂÉÀÈôõòÚùÌÕÜ¢£Ù₧ÓáíóúñÑªº¿Ò¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\xA0"),
+CP861=new SBCS("CP861","ÇüéâäàåçêëèÐðÞÄÅÉæÆôöþûÝýÖÜø£Ø₧ƒáíóúÁÍÓÚ¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\xA0"),
+CP862=new SBCS("CP862","אבגדהוזחטיךכלםמןנסעףפץצקרשת¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\xA0"),
+CP863=new SBCS("CP863","ÇüéâÂà¶çêëèïî‗À§ÉÈÊôËÏûù¤ÔÜ¢£ÙÛƒ¦´óú¨¸³¯Î⌐¬½¼¾«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\xA0"),
+CP864=new SBCS("CP864","°·∙√▒─│┼┤┬├┴┐┌└┘β∞φ±½¼≈«»ﻷﻸ��ﻻﻼ�\xA0­ﺂ£¤ﺄ��ﺎﺏﺕﺙ،ﺝﺡﺥ٠١٢٣٤٥٦٧٨٩ﻑ؛ﺱﺵﺹ؟¢ﺀﺁﺃﺅﻊﺋﺍﺑﺓﺗﺛﺟﺣﺧﺩﺫﺭﺯﺳﺷﺻﺿﻁﻅﻋﻏ¦¬÷×ﻉـﻓﻗﻛﻟﻣﻧﻫﻭﻯﻳﺽﻌﻎﻍﻡﹽّﻥﻩﻬﻰﻲﻐﻕﻵﻶﻝﻙﻱ■�","%٪"),
+CP865=new SBCS("CP865","ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø₧ƒáíóúñÑªº¿⌐¬½¼¡«¤░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\xA0"),
+CP866=new SBCS("CP866","АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмноп░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀рстуфхцчшщъыьэюяЁёЄєЇїЎў°∙·√№¤■\xA0"),
+CP869=new SBCS("CP869","������Ά�·¬¦‘’Έ―ΉΊΪΌ��ΎΫ©Ώ²³ά£έήίϊΐόύΑΒΓΔΕΖΗ½ΘΙ«»░▒▓│┤ΚΛΜΝ╣║╗╝ΞΟ┐└┴┬├─┼ΠΡ╚╔╩╦╠═╬ΣΤΥΦΧΨΩαβγ┘┌█▄δε▀ζηθικλμνξοπρσςτ΄­±υφχ§ψ΅°¨ωϋΰώ■\xA0"),
+CP874=new SBCS("CP874","€����…�����������‘’“”•–—��������\xA0กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู����฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛����"),
+CP1250=new SBCS("CP1250","€�‚�„…†‡�‰Š‹ŚŤŽŹ�‘’“”•–—�™š›śťžź\xA0ˇ˘Ł¤Ą¦§¨©Ş«¬­®Ż°±˛ł´µ¶·¸ąş»Ľ˝ľżŔÁÂĂÄĹĆÇČÉĘËĚÍÎĎĐŃŇÓÔŐÖ×ŘŮÚŰÜÝŢßŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"),
+CP1251=new SBCS("CP1251","ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—�™љ›њќћџ\xA0ЎўЈ¤Ґ¦§Ё©Є«¬­®Ї°±Ііґµ¶·ё№є»јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя"),
+CP1252=new SBCS("CP1252","","€�‚ƒ„…†‡ˆ‰Š‹Œ�Ž��‘’“”•–—˜™š›œ�žŸ"),
+CP1253=new SBCS("CP1253","€�‚ƒ„…†‡�‰�‹�����‘’“”•–—�™�›����\xA0΅Ά£¤¥¦§¨©�«¬­®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ�ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ�"),
+CP1254=new SBCS("CP1254","ışÿ","€�‚ƒ„…†‡ˆ‰Š‹Œ����‘’“”•–—˜™š›œ��ŸÐĞÝİÞŞðğ"),
+CP1255=new SBCS("CP1255","€�‚ƒ„…†‡ˆ‰�‹�����‘’“”•–—˜™�›����\xA0¡¢£₪¥¦§¨©×«¬­®¯°±²³´µ¶·¸¹÷»¼½¾¿ְֱֲֳִֵֶַָֹֺֻּֽ־ֿ׀ׁׂ׃װױײ׳״�������אבגדהוזחטיךכלםמןנסעףפץצקרשת��‎‏�"),
+CP1256=new SBCS("CP1256","€پ‚ƒ„…†‡ˆ‰ٹ‹Œچژڈگ‘’“”•–—ک™ڑ›œ‌‍ں\xA0،¢£¤¥¦§¨©ھ«¬­®¯°±²³´µ¶·¸¹؛»¼½¾؟ہءآأؤإئابةتثجحخدذرزسشصض×طظعغـفقكàلâمنهوçèéêëىيîïًٌٍَôُِ÷ّùْûü‎‏ے"),
+CP1257=new SBCS("CP1257","€�‚�„…†‡�‰�‹�¨ˇ¸�‘’“”•–—�™�›�¯˛�\xA0�¢£¤�¦§Ø©Ŗ«¬­®Æ°±²³´µ¶·ø¹ŗ»¼½¾æĄĮĀĆÄÅĘĒČÉŹĖĢĶĪĻŠŃŅÓŌÕÖ×ŲŁŚŪÜŻŽßąįāćäåęēčéźėģķīļšńņóōõö÷ųłśūüżž˙"),
+CP1258=new SBCS("CP1258","ư₫ÿ","€�‚ƒ„…†‡ˆ‰�‹Œ����‘’“”•–—˜™�›œ��ŸÃĂÌ̀ÐĐÒ̉ÕƠÝƯÞ̃ãăì́ðđọ̀õơ"),
+MAC_CYRILLIC=new SBCS("MAC-CYRILLIC","АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ†°¢£§•¶І®©™Ђђ≠Ѓѓ∞±≤≥іµ∂ЈЄєЇїЉљЊњјЅ¬√ƒ≈∆«»…\xA0ЋћЌќѕ–—“”‘’÷„ЎўЏџ№Ёёяабвгдежзийклмнопрстуфхцчшщъыьэю¤"),
+MAC_GREEK=new SBCS("MAC-GREEK","Ä¹²É³ÖÜ΅àâä΄¨çéèêë£™îï•½‰ôö¦­ùûü†ΓΔΘΛΞΠß®©ΣΪ§≠°·Α±≤≥¥ΒΕΖΗΙΚΜΦΫΨΩάΝ¬ΟΡ≈Τ«»…\xA0ΥΧΆΈœ–―“”‘’÷ΉΊΌΎέήίόΏύαβψδεφγηιξκλμνοπώρστθωςχυζϊϋΐΰ�"),
+MAC_ICELAND=new SBCS("MAC-ICELAND","ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûüÝ°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»…\xA0ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄¤ÐðÞþý·‚„‰ÂÊÁËÈÍÎÏÌÓÔ�ÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ"),
+MAC_LATIN2=new SBCS("MAC-LATIN2","ÄĀāÉĄÖÜáąČäčĆćéŹźĎíďĒēĖóėôöõúĚěü†°Ę£§•¶ß®©™ę¨≠ģĮįĪ≤≥īĶ∂∑łĻļĽľĹĺŅņŃ¬√ńŇ∆«»…\xA0ňŐÕőŌ–—“”‘’÷◊ōŔŕŘ‹›řŖŗŠ‚„šŚśÁŤťÍŽžŪÓÔūŮÚůŰűŲųÝýķŻŁżĢˇ"),
+MAC_ROMAN=new SBCS("MAC-ROMAN","ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»…\xA0ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄¤‹›ﬁﬂ‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔ�ÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ"),
+MAC_TURKISH=new SBCS("MAC-TURKISH","ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»…\xA0ÀÃÕŒœ–—“”‘’÷◊ÿŸĞğİıŞş‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔ�ÒÚÛÙ�ˆ˜¯˘˙˚¸˝˛ˇ"),
+ATARIST=new SBCS("ATARIST","ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥ßƒáíóúñÑªº¿⌐¬½¼¡«»ãõØøœŒÀÃÕ¨´†¶©®™ĳĲאבגדהוזחטיכלמנסעפצקרשתןךםףץ§∧∞αβΓπΣσµτΦΘΩδ∮φ∈∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²³¯"),
+CP424=new SBCS("CP424","\t\x7F\v\f\r\n אבגדהוזחט¢.<(+|&יךכלםמןנס!$*);¬-/עףפץצקרש¦,%_>?pתrs\xA0uvw‗`:#@'=\"�abcdefghi«»���±°jklmnopqr���¸�¤µ~stuvwxyz�����®^£¥·©§¶¼½¾[]¯¨´×{ABCDEFGHI­�����}JKLMNOPQR¹�����\\÷STUVWXYZ²�����0123456789³����"),
+CP856=new SBCS("CP856","אבגדהוזחטיךכלםמןנסעףפץצקרשת�£�×����������®¬½¼�«»░▒▓│┤���©╣║╗╝¢¥┐└┴┬├─┼��╚╔╩╦╠═╬¤���������┘┌█▄¦�▀������µ�������¯´­±‗¾¶§÷¸°¨·¹³²■\xA0"),
+CP1006=new SBCS("CP1006","۰۱۲۳۴۵۶۷۸۹،؛­؟ﺁﺍﺎﺎﺏﺑﭖﭘﺓﺕﺗﭦﭨﺙﺛﺝﺟﭺﭼﺡﺣﺥﺧﺩﮄﺫﺭﮌﺯﮊﺱﺳﺵﺷﺹﺻﺽﺿﻁﻅﻉﻊﻋﻌﻍﻎﻏﻐﻑﻓﻕﻗﻙﻛﮒﮔﻝﻟﻠﻡﻣﮞﻥﻧﺅﻭﮦﮨﮩﮪﺀﺉﺊﺋﻱﻲﻳﮰﮮﹼﹽ"),
+KOI8_R=new SBCS("KOI8-R","─│┌┐└┘├┤┬┴┼▀▄█▌▐░▒▓⌠■∙√≈≤≥\xA0⌡°²·÷═║╒ё╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡Ё╢╣╤╥╦╧╨╩╪╫╬©юабцдефгхийклмнопярстужвьызшэщчъЮАБЦДЕФГХИЙКЛМНОПЯРСТУЖВЬЫЗШЭЩЧЪ"),
+KOI8_U=new SBCS("KOI8-U","─│┌┐└┘├┤┬┴┼▀▄█▌▐░▒▓⌠■∙√≈≤≥\xA0⌡°²·÷═║╒ёє╔ії╗╘╙╚╛ґ╝╞╟╠╡ЁЄ╣ІЇ╦╧╨╩╪Ґ╬©юабцдефгхийклмнопярстужвьызшэщчъЮАБЦДЕФГХИЙКЛМНОПЯРСТУЖВЬЫЗШЭЩЧЪ"),
+KZ1048=new SBCS("KZ1048","ЂЃ‚ѓ„…†‡€‰Љ‹ЊҚҺЏђ‘’“”•–—�™љ›њқһџ\xA0ҰұӘ¤Ө¦§Ё©Ғ«¬­®Ү°±Ііөµ¶·ё№ғ»әҢңүАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя"),
+NEXTSTEP=new SBCS("NEXTSTEP","\xA0ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝÞµ×÷©¡¢£⁄¥ƒ§¤’“«‹›ﬁﬂ®–†‡·¦¶•‚„”»…‰¬¿¹ˋ´ˆ˜¯˘˙¨²˚¸³˝˛ˇ—±¼½¾àáâãäåçèéêëìÆíªîïðñŁØŒºòóôõöæùúûıüýłøœßþÿ��"),
+US_ASCII=new SBCS("US-ASCII","�".repeat(128)),
+UTF8=new Unicode(2,2),
+UTF16LE=new Unicode(0,0),
+UTF16BE=new Unicode(0,1),
+UTF32LE=new Unicode(1,0),
+UTF32BE=new Unicode(1,1),
+encodings={ISO_8859_1,ISO_8859_2,ISO_8859_3,ISO_8859_4,ISO_8859_5,ISO_8859_6,ISO_8859_7,ISO_8859_8,ISO_8859_9,ISO_8859_10,ISO_8859_11,ISO_8859_13,ISO_8859_14,ISO_8859_15,ISO_8859_16,CP037,CP500,CP875,CP1026,CP437,CP737,CP775,CP850,CP852,CP855,CP857,CP860,CP861,CP862,CP863,CP864,CP865,CP866,CP869,CP874,CP1250,CP1251,CP1252,CP1253,CP1254,CP1255,CP1256,CP1257,CP1258,MAC_CYRILLIC,MAC_GREEK,MAC_ICELAND,MAC_LATIN2,MAC_ROMAN,MAC_TURKISH,ATARIST,CP424,CP856,CP1006,KOI8_R,KOI8_U,KZ1048,NEXTSTEP,US_ASCII,UTF8,UTF16LE,UTF16BE,UTF32LE,UTF32BE},
+aliases="ISO-8859-1 819 88591 cp819 csisolatin1 ibm819 isoir100 l1 latin1,ISO-8859-2 88592 912 cp912 csisolatin2 ibm912 isoir101 l2 latin2,ISO-8859-3 88593 913 cp913 csisolatin3 ibm913 isoir109 l3 latin3,ISO-8859-4 88594 914 cp914 csisolatin4 ibm914 isoir110 l4 latin4,ISO-8859-5 88595 915 cp915 csisolatincyrillic cyrillic ibm915 isoir144,ISO-8859-6 1089 88596 arabic asmo708 cp1089 csisolatinarabic ecma114 ibm1089 isoir127,ISO-8859-7 813 88597 cp813 csisolatingreek ecma118 elot928 greek greek8 ibm813 isoir126 suneugreek,ISO-8859-8 88598 916 cp916 csisolatinhebrew hebrew ibm916 isoir138,ISO-8859-9 88599 920 cp920 csisolatin5 ibm920 isoir148 l5 latin5,ISO-8859-10 csisolatin6 isoir157 l6 latin6,ISO-8859-11 xiso885911,ISO-8859-13 885913,ISO-8859-14 isoceltic isoir199 l8 latin8,ISO-8859-15 885915 923 cp923 csiso885915 csisolatin csisolatin9 ibm923 iso885915fdis l9 latin latin9,ISO-8859-16 csiso885916 iso8859162001 isoir226 l10 latin10,CP037 37 cpibm37 csebcdiccpca csebcdiccpnl csebcdiccpus csebcdiccpwt csibm37 ebcdiccpca ebcdiccpnl ebcdiccpus ebcdiccpwt ibm37,CP500 500 csibm500 ebcdiccpbh ebcdiccpch ibm500,CP875 875 ibm875 xibm875,CP1026 1026 ibm1026,CP437 437 cspc8codepage437 ibm437 windows437,CP737 737 ibm737 xibm737,CP775 775 ibm775,CP850 850 cspc850multilingual ibm850,CP852 852 cspcp852 ibm852,CP855 855 cspcp855 ibm855,CP857 857 csibm857 ibm857,CP860 860 csibm860 ibm860,CP861 861 cpis csibm861 ibm861,CP862 862 csibm862 cspc862latinhebrew ibm862,CP863 863 csibm863 ibm863,CP864 864 csibm864 ibm864,CP865 865 csibm865 ibm865,CP866 866 csibm866 ibm866,CP869 869 cpgr csibm869 ibm869,CP874 874 ibm874 xibm874,CP1250 cp5346 win1250 windows1250,CP1251 ansi1251 cp5347 win1251 windows1251,CP1252 cp5348 ibm1252 win1252 windows1252,CP1253 cp5349 win1253 windows1253,CP1254 cp5350 win1254 windows1254,CP1255 win1255 windows1255,CP1256 win1256 windows1256,CP1257 cp5353 win1257 windows1257,CP1258 win1258 windows1258,MAC-CYRILLIC xmaccyrillic,MAC-GREEK xmacgreek,MAC-ICELAND xmaciceland,MAC-LATIN2 maccentraleurope xmaccentraleurope,MAC-ROMAN xmacroman,MAC-TURKISH xmacturkish,ATARIST,CP424 424 csibm424 ebcdiccphe ibm424,CP856 856 ibm856 xibm856,CP1006 1006 ibm1006 xibm1006,KOI8-R cskoi8r koi8,KOI8-U cskoi8u,KZ1048 cskz1048 rk1048 strk10482002,NEXTSTEP we8nextstep,US-ASCII 646 ansix34 ascii ascii7 cp367 csascii default ibm367 iso646irv iso646us isoir6 us,UTF8 unicode11utf8,UTF16LE utf16,UTF16BE,UTF32LE utf32,UTF32BE";

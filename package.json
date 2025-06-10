@@ -1,8 +1,9 @@
 {
   "type": "module",
   "name": "iconv-tiny",
-  "version": "1.1.1",
-  "description": "Pure JS ESM Encodings Set for Browser and NodeJS",
+  "version": "1.2.0",
+  "description": "Pure JS ESM Encodings for Browser and NodeJS",
+  "sideEffects": false,
   "keywords": [
     "iconv",
     "text-encoding",
@@ -17,17 +18,14 @@
   "license": "MIT",
   "author": "vip.delete",
   "files": [
-    "dist/**",
+    "dist/iconv-tiny.d.mjs",
+    "dist/iconv-tiny.mjs",
+    "dist/iconv-tiny.min.mjs",
     "LICENSE",
     "README.md"
   ],
   "exports": {
-    ".": {
-      "types": "./types/iconv-tiny.runtime.d.mts",
-      "import": "./dist/iconv-tiny.runtime.mjs"
-    },
-    "./aliases": "./dist/iconv-tiny.aliases.mjs",
-    "./encodings": "./dist/iconv-tiny.encodings.mjs"
+    ".": "./dist/iconv-tiny.mjs"
   },
   "repository": {
     "type": "git",
@@ -35,26 +33,26 @@
   },
   "scripts": {
     "lint": "eslint",
-    "clean": "node scripts/clean.mjs",
     "generate": "node scripts/generate.mjs",
     "compile": "node scripts/compile.mjs",
-    "coverage": "vitest run --coverage coverage.mjs",
+    "coverage": "vitest run --coverage main.test.mjs",
     "test": "vitest run",
-    "build": "npm run lint && npm run clean && npm run compile && npm run generate && npm run test && npm run coverage",
+    "build": "npm run lint && npm run generate && npm run test && npm run coverage",
     "dev": "node scripts/server.js"
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^4.x",
+    "@stylistic/eslint-plugin": "^5.x",
     "@types/express": "^5.x",
     "@types/google-closure-compiler": "^20231112.0.0",
-    "@types/node": "^20.x",
+    "@types/node": "^24.x",
     "@types/serve-static": "^1.x",
     "@vitest/coverage-istanbul": "^3.x",
-    "@vue/runtime-dom": "^3.x",
+    "@vue/runtime-dom": "^3.5.17",
+    "esbuild": "^0.25.x",
     "eslint": "^9.x",
-    "eslint-plugin-jsdoc": "^50.x",
+    "eslint-plugin-jsdoc": "^51.x",
     "express": "^5.x",
-    "google-closure-compiler": "^20250603.0.0",
+    "google-closure-compiler": "^20250625.0.0",
     "iconv-lite": "^0.6.3",
     "prettier": "^3.x",
     "serve-static": "^2.x",

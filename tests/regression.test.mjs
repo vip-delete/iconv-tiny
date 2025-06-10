@@ -1,17 +1,34 @@
 import iconvLite from "iconv-lite";
-import { IconvTiny } from "iconv-tiny";
-import * as encodings from "iconv-tiny/encodings";
+import { IconvTiny, encodings } from "iconv-tiny";
 import { assert, expect, test } from "vitest";
 import { DEFAULT_CHAR_BYTE } from "../src/commons.mjs";
 import { ALL_SYMBOLS } from "./common.mjs";
 
-regressionTest(Object.keys(encodings), new IconvTiny(encodings));
+/**
+ * @param {string} name
+ * @param {string} actualStr
+ * @param {string} expectedStr
+ */
+const compareStr = (name, actualStr, expectedStr) => {
+  assert.strictEqual(actualStr.length, expectedStr.length, `${name}: string length mismatch`);
+  expect(actualStr.length).toBe(expectedStr.length);
+  for (let i = 0; i < expectedStr.length; i++) {
+    const expected = expectedStr.codePointAt(i) ?? 0;
+    const actual = actualStr.codePointAt(i) ?? 0;
+    if (expected !== actual) {
+      assert.strictEqual(actual, expected, `${name}: codePoint mismatch at position '${i}'`);
+    }
+    if (expected > 0xffff) {
+      i++;
+    }
+  }
+};
 
 /**
  * @param {!Array<string>} encodingsList
  * @param {IconvTiny} iconvTiny
  */
-export function regressionTest(encodingsList, iconvTiny) {
+export const regressionTest = (encodingsList, iconvTiny) => {
   const buffer = new Uint8Array(256);
   for (let i = 0; i < 255; i++) {
     buffer[i] = i;
@@ -110,24 +127,6 @@ export function regressionTest(encodingsList, iconvTiny) {
     expect(dec1.write(Buffer.from(new Uint8Array([0xd0])))).toBe("");
     expect(dec1.end()).toBe("�"); // incomplete
   }
-}
+};
 
-/**
- * @param {string} name
- * @param {string} actualStr
- * @param {string} expectedStr
- */
-function compareStr(name, actualStr, expectedStr) {
-  assert.strictEqual(actualStr.length, expectedStr.length, `${name}: string length mismatch`);
-  expect(actualStr.length).toBe(expectedStr.length);
-  for (let i = 0; i < expectedStr.length; i++) {
-    const expected = expectedStr.codePointAt(i) ?? 0;
-    const actual = actualStr.codePointAt(i) ?? 0;
-    if (expected !== actual) {
-      assert.strictEqual(actual, expected, `${name}: codePoint mismatch at position '${i}'`);
-    }
-    if (expected > 0xffff) {
-      i++;
-    }
-  }
-}
+regressionTest(Object.keys(encodings), new IconvTiny(encodings));

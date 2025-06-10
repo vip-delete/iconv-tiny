@@ -2,12 +2,41 @@
  * @file Encoding API for Closure Compiler.
  * @externs
  */
+let ns = {
+  /**
+   * @interface
+   */
+  IconvTiny: class {
+    /**
+     * @param {!Uint8Array} array
+     * @param {string} encoding
+     * @param {!ns.OptionsAndDecoderOptions} [options]
+     * @returns {string}
+     */
+    decode(array, encoding, options) {}
 
-const A = Uint8Array;
-const B = Uint16Array;
-const C = TextDecoder;
+    /**
+     * @param {string} content
+     * @param {string} encoding
+     * @param {!ns.OptionsAndEncoderOptions} [options]
+     * @returns {!Uint8Array}
+     */
+    encode(content, encoding, options) {}
 
-const ns = {
+    /**
+     * @param {string} name
+     * @param {!ns.Options} [options]
+     * @returns {!ns.Encoding}
+     */
+    getEncoding(name, options) {}
+  },
+
+  /**
+   * @param {string} encoding
+   * @returns {string}
+   */
+  canonicalize(encoding) {},
+
   /**
    * @interface
    */
@@ -89,40 +118,6 @@ const ns = {
      */
     byteLength(src) {}
   },
-
-  /**
-   * @interface
-   */
-  IconvTiny: class {
-    /**
-     * @param {!Uint8Array} array
-     * @param {string} encoding
-     * @param {!ns.OptionsAndDecoderOptions} [options]
-     * @returns {string}
-     */
-    decode(array, encoding, options) {}
-
-    /**
-     * @param {string} content
-     * @param {string} encoding
-     * @param {!ns.OptionsAndEncoderOptions} [options]
-     * @returns {!Uint8Array}
-     */
-    encode(content, encoding, options) {}
-
-    /**
-     * @param {string} name
-     * @param {!ns.Options} [options]
-     * @returns {!ns.Encoding}
-     */
-    getEncoding(name, options) {}
-  },
-
-  /**
-   * @param {string} encoding
-   * @returns {string}
-   */
-  canonicalize(encoding) {},
 };
 
 /**

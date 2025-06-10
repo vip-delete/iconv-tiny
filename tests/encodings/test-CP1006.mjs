@@ -1,8 +1,8 @@
-import { CP1006 as CP } from "iconv-tiny/encodings";
+import { CP1006 } from "iconv-tiny";
 import { expect, test } from "vitest";
 
 test("CP1006", () => {
-  const cp = CP.create();
+  const cp = CP1006.create();
   // https://www.unicode.org/Public/MAPPINGS/VENDORS/MISC/CP1006.TXT
   // ...
   // 0xB1 0xFE8E # ARABIC LETTER ALEF FINAL FORM

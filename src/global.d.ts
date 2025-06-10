@@ -13,6 +13,13 @@ declare namespace ns {
     getEncoding(encoding: string, options?: Options): Encoding;
   }
 
+  /**
+   * Converts an encoding name to a normalized, unique name.
+   * Removes non-alphanumeric characters and leading zeros.
+   * For more details, refer to: https://www.unicode.org/reports/tr22/tr22-8.html#Charset_Alias_Matching
+   * @param {string} encoding
+   * @returns {string}
+   */
   export function canonicalize(encoding: string): string;
 
   interface Encoding {
@@ -46,22 +53,6 @@ declare namespace ns {
     read: number;
     written: number;
   }
-
-  type Overrides = Array<number | string>;
-
-  /**
-   * @param {number} c - input character code (0-65536)
-   * @param {number} index - index of the character
-   * @returns {number} default byte (0-255)
-   */
-  type DefaultCharByteFunction = (c: number, index: number) => number | null | undefined;
-
-  /**
-   * @param {number} b - input byte (0-255)
-   * @param {number} index - index of the byte
-   * @returns {number} default character code (0-65536)
-   */
-  type DefaultCharUnicodeFunction = (b: number, index: number) => number | null | undefined;
 
   type DecoderOptions = {
     /**
@@ -105,6 +96,22 @@ declare namespace ns {
      */
     overrides?: Overrides;
   };
+
+  type Overrides = Array<number | string>;
+
+  /**
+   * @param {number} input - input character code (0-65536)
+   * @param {number} index - index of the character
+   * @returns {number} default byte (0-255)
+   */
+  type DefaultCharByteFunction = (input: number, index: number) => number | null | undefined;
+
+  /**
+   * @param {number} input - input byte (0-255)
+   * @param {number} index - index of the byte
+   * @returns {number} default character code (0-65536)
+   */
+  type DefaultCharUnicodeFunction = (input: number, index: number) => number | null | undefined;
 
   type OptionsAndDecoderOptions = Options & DecoderOptions;
   type OptionsAndEncoderOptions = Options & EncoderOptions;

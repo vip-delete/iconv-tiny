@@ -1,6 +1,6 @@
 import js from "@eslint/js";
-import jsdoc from "eslint-plugin-jsdoc";
 import stylistic from "@stylistic/eslint-plugin";
+import jsdoc from "eslint-plugin-jsdoc";
 
 export default [
   js.configs.all,
@@ -10,17 +10,18 @@ export default [
     semi: true,
   }),
   {
-    ignores: ["dist", "temp", "static", "src/externs.mjs"],
+    ignores: ["dist", "static", "src/externs.mjs"],
   },
   {
     languageOptions: {
       globals: {
+        process: "readonly",
         TextEncoder: "readonly",
         TextDecoder: "readonly",
         Buffer: "readonly",
         fetch: "readonly",
         console: "readonly",
-        ns: "readonly",
+        ns: "writable",
       },
     },
     plugins: {
@@ -29,37 +30,25 @@ export default [
     },
     rules: {
       "@stylistic/arrow-parens": ["error", "always"],
-      "@stylistic/brace-style": ["error", "1tbs", { "allowSingleLine": true }],
+      "@stylistic/brace-style": ["error", "1tbs", { allowSingleLine: true }],
       "@stylistic/indent": ["error", 2],
-      "@stylistic/no-extra-semi": "error",
-      "@stylistic/operator-linebreak": 0,
-      "@stylistic/quote-props": ["error", "consistent"],
       "capitalized-comments": 0,
-      "class-methods-use-this": 0,
-      "func-style": 0,
-      "id-length": 0,
-      "jsdoc/check-tag-names": ["error", { "definedTags": ["externs", "define", "nosideeffects"] }],
+      "id-length": ["error", { exceptions: ["e", "i", "j", "k"] }],
+      "jsdoc/check-tag-names": ["error", { definedTags: ["externs", "define"] }],
       "jsdoc/check-types": 0,
-      "jsdoc/no-undefined-types": "error",
-      "jsdoc/require-jsdoc": 0,
       "jsdoc/require-param-description": 0,
-      "jsdoc/require-returns-check": 0,
       "jsdoc/require-returns-description": 0,
       "max-classes-per-file": 0,
-      "max-depth": 0,
       "max-lines": 0,
       "max-lines-per-function": ["error", 100],
-      "max-params": 0,
+      "max-params": ["error", 5],
       "max-statements": 0,
-      "multiline-comment-style": 0,
       "no-bitwise": 0,
-      "no-constant-condition": 0,
       "no-inline-comments": 0,
       "no-magic-numbers": 0,
       "no-param-reassign": 0,
       "no-plusplus": 0,
       "no-ternary": 0,
-      "no-use-before-define": 0,
       "one-var": 0,
       "prefer-destructuring": 0,
       "prefer-template": 0,

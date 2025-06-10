@@ -1,13 +1,12 @@
-import { IconvTiny } from "iconv-tiny";
-import { UTF8 } from "iconv-tiny/encodings";
+import { IconvTiny, UTF8 } from "iconv-tiny";
 
 // UTF-8 decoder always use TextDecoder with { stream: true }
 
 const decoder = UTF8.create().newDecoder();
-const a = decoder.decode(new Uint8Array([226])); // empty
-const b = decoder.decode(new Uint8Array([157])); // empty
-const c = decoder.decode(new Uint8Array([147])); // ❓
-console.log([a, b, c].join(",")); // ,,❓
+const p1 = decoder.decode(new Uint8Array([226])); // empty
+const p2 = decoder.decode(new Uint8Array([157])); // empty
+const p3 = decoder.decode(new Uint8Array([147])); // ❓
+console.log([p1, p2, p3].join(",")); // ,,❓
 
 const a1 = decoder.decode(new Uint8Array([226])); // empty
 const b1 = decoder.decode(new Uint8Array([157])); // empty

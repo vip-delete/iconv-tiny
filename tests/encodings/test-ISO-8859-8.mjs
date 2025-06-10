@@ -1,10 +1,10 @@
 import iconvLite from "iconv-lite";
-import { ISO_8859_8 as CP } from "iconv-tiny/encodings";
+import { ISO_8859_8 } from "iconv-tiny";
 import { expect, test } from "vitest";
 import { DEFAULT_CHAR_BYTE, REPLACEMENT_CHARACTER_CODE } from "../../src/commons.mjs";
 
 test("ISO-8859-8", () => {
-  const cp = CP.create();
+  const cp = ISO_8859_8.create();
   // new TextDecoder("ISO-8859-8").decode(new Uint8Array([0xA1]));
   // TextDecoder correctly maps unmapped byte 0xA1 to �
   expect(cp.decode(new Uint8Array([0xa1]))).toBe(String.fromCharCode(REPLACEMENT_CHARACTER_CODE));
@@ -24,7 +24,7 @@ test("ISO-8859-8: iconv-lite comparison", () => {
     array[i] = i;
   }
   const str = String.fromCharCode.apply(null, Array.from(array));
-  const cp = CP.create();
+  const cp = ISO_8859_8.create();
   const encodeExpected = new Uint8Array(iconvLite.encode(str, "ISO-8859-8"));
   const encodeActual = cp.encode(str);
   expect(encodeExpected.length).toBe(array.length);

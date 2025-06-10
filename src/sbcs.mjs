@@ -1,127 +1,4 @@
-import { DEFAULT_CHAR_BYTE, DEFAULT_NATIVE_DECODE, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
-import { Charset, NativeDecoder } from "./cs.mjs";
-
-/**
- * @implements {ns.EncodingFactory}
- */
-export class SBCS {
-  /**
-   * @param {string} charsetName
-   * @param {string} symbols
-   * @param {string} [diff]
-   */
-  constructor(charsetName, symbols, diff) {
-    this.charsetName = charsetName;
-    this.symbols = symbols;
-    this.diff = diff;
-  }
-
-  /**
-   * @override
-   * @param {!ns.Options} [options]
-   * @returns {!ns.Encoding}
-   */
-  // @ts-ignore
-  create(options) {
-    const b2c = getMappings(this.symbols, this.diff ?? "");
-    const overrides = options?.overrides ?? [];
-    let k = 0;
-    while (k < overrides.length - 1) {
-      const i = overrides[k++];
-      const c = overrides[k++];
-      b2c[Number(i)] = typeof c === "number" ? c : c.charCodeAt(0);
-    }
-    return new SBCSCharset(this.charsetName, b2c);
-  }
-}
-
-/**
- * @param {string} symbols
- * @param {string} diff
- * @returns {!Uint16Array}
- */
-function getMappings(symbols, diff) {
-  const s = new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
-  let i = 0;
-  while (i < 256 - symbols.length) {
-    s[i] = i++;
-  }
-  let j = 0;
-  while (i < 256) {
-    s[i++] = symbols.charCodeAt(j++);
-  }
-  let k = 0;
-  while (k < diff.length) {
-    s[diff.charCodeAt(k)] = diff.charCodeAt(k + 1);
-    k += 2;
-  }
-  return s;
-}
-
-/**
- * @param {string} charsetName
- * @returns {!ns.CharsetDecoder}
- */
-function nativeDecoder(charsetName) {
-  return new NativeDecoder(new TextDecoder(charsetName));
-}
-
-/**
- * @implements {ns.Encoding}
- */
-class SBCSCharset extends Charset {
-  /**
-   * @param {string} charsetName
-   * @param {!Uint16Array} b2c
-   */
-  constructor(charsetName, b2c) {
-    super(charsetName);
-    this.b2c = b2c;
-    /**
-     * @type {?Uint16Array}
-     */
-    this.c2b = null;
-    try {
-      nativeDecoder(this.charsetName);
-      this.nativeSupported = true;
-    } catch {
-      this.nativeSupported = false;
-    }
-  }
-
-  /**
-   * @override
-   * @param {!ns.DecoderOptions} [options]
-   * @returns {!ns.CharsetDecoder}
-   */
-  // @ts-ignore
-  newDecoder(options) {
-    const defaultCharUnicode = options?.defaultCharUnicode;
-    if (this.nativeSupported && (options?.native ?? DEFAULT_NATIVE_DECODE)) {
-      return nativeDecoder(this.charsetName);
-    }
-    return new SBCSDecoder(this.b2c, defaultCharUnicode);
-  }
-
-  /**
-   * @override
-   * @param {!ns.EncoderOptions} [options]
-   * @returns {!ns.CharsetEncoder}
-   */
-  // @ts-ignore
-  newEncoder(options) {
-    if (!this.c2b) {
-      this.c2b = new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
-      for (let i = 0; i < 256; i++) {
-        const c = this.b2c[i];
-        if (c !== REPLACEMENT_CHARACTER_CODE) {
-          this.c2b[c] = i;
-        }
-      }
-    }
-    return new SBCSEncoder(this.c2b, options?.defaultCharByte);
-  }
-}
+import { Charset, CharsetEncoderBase, DEFAULT_CHAR_BYTE, DEFAULT_NATIVE_DECODE, NativeCharsetDecoder, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
 
 /**
  * @implements {ns.CharsetDecoder}
@@ -148,7 +25,7 @@ class SBCSDecoder {
    * @param {!Uint8Array} [array]
    * @returns {string}
    */
-  // @ts-ignore
+  // @ts-expect-error
   decode(array) {
     if (!array) {
       return "";
@@ -157,10 +34,12 @@ class SBCSDecoder {
     const len = array.length;
     const u16 = new Uint16Array(len);
     for (let i = 0; i < len; i++) {
-      const b = array[i];
-      const c = b2c[b];
-      u16[i] = c === REPLACEMENT_CHARACTER_CODE ? (handler(b, i) ?? c) : c;
+      const byte = array[i];
+      const ch = b2c[byte];
+      u16[i] = ch === REPLACEMENT_CHARACTER_CODE ? (handler(byte, i) ?? ch) : ch;
     }
+
+    // return getString(u16);
 
     // TextDecoder is super fast but doesn't allow invalid surrogate pairs in the output:
     // >> new TextDecoder("UTF-16").decode(new Uint16Array([0xD7FF, 0xD800, 0xD801, 0xD802]))
@@ -182,12 +61,13 @@ class SBCSDecoder {
 /**
  * @implements {ns.CharsetEncoder}
  */
-class SBCSEncoder {
+class SBCSEncoder extends CharsetEncoderBase {
   /**
    * @param {!Uint16Array} c2b
    * @param {!ns.DefaultCharByteFunction|string} [defaultCharByte]
    */
   constructor(c2b, defaultCharByte) {
+    super();
     this.c2b = c2b;
     if (typeof defaultCharByte !== "function") {
       const defaultCharByteCode = defaultCharByte?.length ? defaultCharByte.charCodeAt(0) : DEFAULT_CHAR_BYTE;
@@ -201,44 +81,159 @@ class SBCSEncoder {
 
   /**
    * @override
-   * @param {string} [text]
-   * @returns {!Uint8Array}
-   */
-  // @ts-ignore
-  encode(text) {
-    if (!text) {
-      return new Uint8Array(0);
-    }
-    const dst = new Uint8Array(text.length);
-    this.encodeInto(text, dst);
-    return dst;
-  }
-
-  /**
-   * @override
    * @param {string} src
    * @param {!Uint8Array} dst
    * @returns {!ns.TextEncoderEncodeIntoResult}
    */
-  // @ts-ignore
+  // @ts-expect-error
   encodeInto(src, dst) {
     const { c2b, handler } = this;
     const len = Math.min(src.length, dst.length);
     for (let i = 0; i < len; i++) {
-      const c = src.charCodeAt(i);
-      const b = c2b[c];
-      dst[i] = b === REPLACEMENT_CHARACTER_CODE ? (handler(c, i) ?? DEFAULT_CHAR_BYTE) : b;
+      const ch = src.charCodeAt(i);
+      const byte = c2b[ch];
+      dst[i] = byte === REPLACEMENT_CHARACTER_CODE ? (handler(ch, i) ?? DEFAULT_CHAR_BYTE) : byte;
     }
     return { read: len, written: len };
   }
 
   /**
    * @override
-   * @param {string} src
+   * @param {string} text
    * @returns {number}
    */
-  // @ts-ignore
-  byteLength(src) {
-    return src.length;
+  // eslint-disable-next-line class-methods-use-this
+  byteLengthMax(text) {
+    return text.length;
+  }
+
+  /**
+   * @override
+   * @param {string} text
+   * @returns {number}
+   */
+  byteLength(text) {
+    return this.byteLengthMax(text);
+  }
+}
+
+/**
+ * @implements {ns.Encoding}
+ */
+class SBCSCharset extends Charset {
+  /**
+   * @param {string} charsetName
+   * @param {!Uint16Array} b2c
+   */
+  constructor(charsetName, b2c) {
+    super(charsetName);
+    this.b2c = b2c;
+    /**
+     * @type {?Uint16Array}
+     */
+    this.c2b = null;
+    try {
+      this.newNativeDecoder();
+      this.nativeSupported = true;
+    } catch {
+      this.nativeSupported = false;
+    }
+  }
+
+  /**
+   * @override
+   * @param {!ns.DecoderOptions} [options]
+   * @returns {!ns.CharsetDecoder}
+   */
+  // @ts-expect-error
+  newDecoder(options) {
+    if (this.nativeSupported && (options?.native ?? DEFAULT_NATIVE_DECODE)) {
+      return this.newNativeDecoder();
+    }
+    return new SBCSDecoder(this.b2c, options?.defaultCharUnicode);
+  }
+
+  /**
+   * @override
+   * @param {!ns.EncoderOptions} [options]
+   * @returns {!ns.CharsetEncoder}
+   */
+  // @ts-expect-error
+  newEncoder(options) {
+    if (!this.c2b) {
+      this.c2b = new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
+      for (let i = 0; i < 256; i++) {
+        const ch = this.b2c[i];
+        if (ch !== REPLACEMENT_CHARACTER_CODE) {
+          this.c2b[ch] = i;
+        }
+      }
+    }
+    return new SBCSEncoder(this.c2b, options?.defaultCharByte);
+  }
+
+  /**
+   * @private
+   * @returns {!ns.CharsetDecoder}
+   */
+  newNativeDecoder() {
+    return new NativeCharsetDecoder(new TextDecoder(this.charsetName));
+  }
+}
+
+/**
+ * @param {string} symbols
+ * @param {string} diff
+ * @returns {!Uint16Array}
+ */
+const getMappings = (symbols, diff) => {
+  const mappings = new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
+  let i = 0;
+  while (i < 256 - symbols.length) {
+    mappings[i] = i++;
+  }
+  let j = 0;
+  while (i < 256) {
+    mappings[i++] = symbols.charCodeAt(j++);
+  }
+  let k = 0;
+  while (k < diff.length) {
+    mappings[diff.charCodeAt(k)] = diff.charCodeAt(k + 1);
+    k += 2;
+  }
+  return mappings;
+};
+
+/**
+ * @implements {ns.EncodingFactory}
+ */
+export class SBCS {
+  /**
+   * @param {string} charsetName
+   * @param {string} symbols
+   * @param {string} [diff]
+   */
+  constructor(charsetName, symbols, diff) {
+    this.charsetName = charsetName;
+    this.symbols = symbols;
+    this.diff = diff;
+  }
+
+  /**
+   * @override
+   * @param {!ns.Options} [options]
+   * @returns {!ns.Encoding}
+   */
+  // @ts-expect-error
+  create(options) {
+    const b2c = getMappings(this.symbols, this.diff ?? "");
+    const overrides = options?.overrides ?? [];
+    let k = 0;
+    while (k < overrides.length - 1) {
+      const i = overrides[k++];
+      const ch = overrides[k++];
+      b2c[Number(i)] = typeof ch === "number" ? ch : ch.charCodeAt(0);
+    }
+    return new SBCSCharset(this.charsetName, b2c);
   }
 }

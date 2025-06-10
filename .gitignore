@@ -1,5 +1,4 @@
 .idea
 coverage
 node_modules
-src/encodings
 package-lock.json

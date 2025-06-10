@@ -1,4 +1,4 @@
-import { CP1251, CP1252 } from "iconv-tiny/encodings";
+import { CP1251, CP1252 } from "iconv-tiny";
 
 // A funny example of what happens if encodings are different.
 const cp1251 = CP1251.create();

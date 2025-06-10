@@ -1,8 +1,8 @@
-import { CP1252 as CP } from "iconv-tiny/encodings";
+import { CP1252 } from "iconv-tiny";
 import { expect, test } from "vitest";
 
 test("CP1252", () => {
-  const cp = CP.create();
+  const cp = CP1252.create();
   expect(cp.decode(new Uint8Array([".".charCodeAt(0), 32, 32, 32, 32, 32, 32, 32, 32, 32, 32])).trimEnd()).toBe(".");
   expect(cp.decode(new Uint8Array([72, 69, 76, 76, 79, 32, 32, 32, 65, 32, 32])).trimEnd()).toBe("HELLO   A");
   expect(cp.decode(new Uint8Array([72, 69, 76, 76, 79, 32, 32, 32, 65, 83, 77]))).toBe("HELLO   ASM");
@@ -13,7 +13,7 @@ test("CP1252", () => {
 });
 
 test("CP1252 overrides", () => {
-  const cp = CP.create({ overrides: [0x81, "❓"] });
+  const cp = CP1252.create({ overrides: [0x81, "❓"] });
   const buf = new Uint8Array([0x80, 0x81]);
   expect(cp.decode(buf)).toBe("€❓");
   expect(cp.encode("€❓")).toStrictEqual(buf);
@@ -22,14 +22,14 @@ test("CP1252 overrides", () => {
 test("CP1252 overrides", () => {
   const buf = new Uint8Array([0x41, 0x42, 0x81, 0x8d, 0x8f, 0x90, 0x9d]);
 
-  const cp = CP.create();
+  const cp = CP1252.create();
   expect(cp.decode(buf, { defaultCharUnicode: "❓" })).toBe("AB❓❓❓❓❓");
 
   // default character as be a function.
   const indexes = /** @type {Array<number>} */ ([]);
   expect(
     cp.decode(buf, {
-      defaultCharUnicode: (_, index) => {
+      defaultCharUnicode: (input, index) => {
         indexes.push(index);
         return null;
       },

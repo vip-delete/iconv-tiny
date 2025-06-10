@@ -1,5 +1,5 @@
 import iconvLite from "iconv-lite";
-import { CP1251 as CP } from "iconv-tiny/encodings";
+import { CP1251 as CP } from "iconv-tiny";
 
 const runs = 10000;
 const kb = 256;
@@ -17,7 +17,7 @@ for (let i = 0; i < array.length; i++) {
   array[i] = i & 0xffff;
 }
 const text = Array.from(array)
-  .map((c) => String.fromCharCode(c))
+  .map((ch) => String.fromCharCode(ch))
   .join("");
 
 /**
@@ -25,7 +25,7 @@ const text = Array.from(array)
  * @param {function():any} func
  * @param {string} [comment]
  */
-export function run(name, func, comment) {
+const run = (name, func, comment) => {
   const start = Date.now();
   for (let i = 0; i < runs; i++) {
     func();
@@ -33,7 +33,7 @@ export function run(name, func, comment) {
   const durationMs = Date.now() - start;
   const mbs = runs * (mb / (durationMs / 1000));
   console.log(`${name}: ${durationMs} ms, ${mbs.toFixed(1)} Mb/s.${comment ?? ""}`);
-}
+};
 
 const iconvLiteEncoder = iconvLite.getEncoder("cp1251");
 const iconvLiteDecoder = iconvLite.getDecoder("cp1251");
@@ -51,4 +51,4 @@ run("iconv-tiny", () => encoder.encodeInto(text, temp));
 console.log(`\nnCP1251: Decode ${kb}KB array ${runs} times:`);
 run("iconv-lite", () => iconvLiteDecoder.write(buffer));
 run("iconv-tiny", () => decoder.decode(buf));
-run("iconv-tiny", () => decoderNative.decode(buf), " <--- native");
+run("iconv-tiny", () => decoderNative.decode(buf), " <--- native:true");

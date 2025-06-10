@@ -1,5 +1,4 @@
-import { IconvTiny, aliases } from "../dist/iconv-tiny.bundle.mjs";
-import * as encodings from "../dist/iconv-tiny.bundle.mjs";
+import { IconvTiny, aliases, encodings } from "iconv-tiny";
 
 // File "iconv-tiny.bundle.mjs" contains everything in ~24KB
 // It simplifies integration without the need for build tools.
