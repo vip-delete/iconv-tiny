@@ -75,7 +75,24 @@ var IconvTiny = class {
 var REPLACEMENT_CHARACTER_CODE = 65533;
 var DEFAULT_CHAR_BYTE = 63;
 var DEFAULT_NATIVE_DECODE = false;
+var STRING_SMALLSIZE = 192;
+var STRING_CHUNKSIZE = 1024;
 var UTF16 = new TextDecoder("UTF-16LE", { fatal: true });
+var getString = (u16) => {
+  const len = u16.length;
+  if (len <= STRING_SMALLSIZE) {
+    return String.fromCharCode(...u16);
+  }
+  try {
+    return UTF16.decode(u16);
+  } catch {
+  }
+  const result = [];
+  for (let i = 0; i < len; i += STRING_CHUNKSIZE) {
+    result.push(String.fromCharCode(...u16.subarray(i, i + STRING_CHUNKSIZE)));
+  }
+  return result.join("");
+};
 var Charset = class {
   /**
    * @param {string} charsetName
@@ -202,7 +219,7 @@ var SBCSDecoder = class {
       const ch = b2c[byte];
       u16[i] = ch === REPLACEMENT_CHARACTER_CODE ? handler(byte, i) ?? ch : ch;
     }
-    return new TextDecoder("UTF-16LE").decode(u16);
+    return getString(u16);
   }
 };
 var SBCSEncoder = class extends CharsetEncoderBase {

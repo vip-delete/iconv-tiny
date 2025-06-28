@@ -80,7 +80,8 @@ test("CP1251 options 2", () => {
 
 test("CP1251 overrides", () => {
   const cp = CP1251.create({ overrides: [0, "😀"] });
-  expect(cp.decode(cp.encode("😀", { defaultCharByte: "#" }))).toBe("�#");
+  expect(cp.decode(cp.encode("😀", { defaultCharByte: "#" }))).toBe("\ud83d#");
+  expect(cp.decode(cp.encode("😀".repeat(200), { defaultCharByte: "#" }))).toBe("\ud83d#".repeat(200));
 });
 
 test("CP1251 overrides 2", () => {

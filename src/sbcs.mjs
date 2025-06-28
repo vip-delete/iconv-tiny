@@ -1,4 +1,4 @@
-import { Charset, CharsetEncoderBase, DEFAULT_CHAR_BYTE, DEFAULT_NATIVE_DECODE, NativeCharsetDecoder, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
+import { Charset, CharsetEncoderBase, DEFAULT_CHAR_BYTE, DEFAULT_NATIVE_DECODE, getString, NativeCharsetDecoder, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
 
 /**
  * @implements {ns.CharsetDecoder}
@@ -39,22 +39,7 @@ class SBCSDecoder {
       u16[i] = ch === REPLACEMENT_CHARACTER_CODE ? (handler(byte, i) ?? ch) : ch;
     }
 
-    // return getString(u16);
-
-    // TextDecoder is super fast but doesn't allow invalid surrogate pairs in the output:
-    // >> new TextDecoder("UTF-16").decode(new Uint16Array([0xD7FF, 0xD800, 0xD801, 0xD802]))
-    // >> \ud7ff\ufffd\ufffd\ufffd
-    return new TextDecoder("UTF-16LE").decode(u16);
-
-    // String.fromCharCode is 10x slower than TextDecoder but decodes "as-is":
-    // >> String.fromCharCode(0xD7FF, 0xD800, 0xD801, 0xD802)
-    // >> \ud7ff\ud800\ud801\ud802
-
-    // const result = [];
-    // for (let i = 0; i < codes.length; i += 1024) {
-    //   result.push(String.fromCharCode(...codes.subarray(i, i + 1024)));
-    // }
-    // return result.join("");
+    return getString(u16);
   }
 }
 

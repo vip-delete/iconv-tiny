@@ -56,7 +56,7 @@ test("iconvTiny strict flag", () => {
 
   // expect(fastMode).toBe("\ud7ff\ufffd\ufffd\ufffd");
   // expect(strictMode).toBe("\ud7ff\ud800\ud801\ud802");
-  expect(defaultMode).toBe("\ud7ff\ufffd\ufffd\ufffd");
+  expect(defaultMode).toBe("\ud7ff\ud800\ud801\ud802");
   expect(noOverrides).toStrictEqual("\x01\x02\x03\x04");
 });
 
