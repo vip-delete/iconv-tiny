@@ -1,5 +1,5 @@
 /**
- * iconv-tiny v1.2.0
+ * iconv-tiny v1.2.1
  * (c) 2025-present vip.delete
  * @license MIT
  **/

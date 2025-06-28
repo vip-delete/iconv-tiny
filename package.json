@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "iconv-tiny",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Pure JS ESM Encodings for Browser and NodeJS",
   "sideEffects": false,
   "keywords": [
@@ -18,7 +18,7 @@
   "license": "MIT",
   "author": "vip.delete",
   "files": [
-    "dist/iconv-tiny.d.mjs",
+    "dist/iconv-tiny.d.mts",
     "dist/iconv-tiny.mjs",
     "dist/iconv-tiny.min.mjs",
     "LICENSE",
