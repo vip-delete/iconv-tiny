@@ -21,6 +21,19 @@ const UTF16 = new TextDecoder("UTF-16LE", { fatal: true });
  * @param {!Uint16Array} u16
  * @returns {string}
  */
+const getStringFallback = (u16) => {
+  const len = u16.length;
+  const result = [];
+  for (let i = 0; i < len; i += STRING_CHUNKSIZE) {
+    result.push(String.fromCharCode(...u16.subarray(i, i + STRING_CHUNKSIZE)));
+  }
+  return result.join("");
+};
+
+/**
+ * @param {!Uint16Array} u16
+ * @returns {string}
+ */
 export const getString = (u16) => {
   const len = u16.length;
   if (len <= STRING_SMALLSIZE) {
@@ -29,13 +42,8 @@ export const getString = (u16) => {
   try {
     return UTF16.decode(u16);
   } catch {
-    // ignore
+    return getStringFallback(u16);
   }
-  const result = [];
-  for (let i = 0; i < len; i += STRING_CHUNKSIZE) {
-    result.push(String.fromCharCode(...u16.subarray(i, i + STRING_CHUNKSIZE)));
-  }
-  return result.join("");
 };
 
 /**
@@ -128,6 +136,7 @@ export class CharsetEncoderBase {
    */
   // @ts-expect-error
   encode(text) {
+    this.reset();
     if (!text) {
       return new Uint8Array(0);
     }
@@ -139,7 +148,7 @@ export class CharsetEncoderBase {
 
   // @ts-expect-error
   // eslint-disable-next-line jsdoc/empty-tags
-  /** @abstract @param {string} text @returns {number}  */
+  /** @abstract @param {string} text @returns {number} */
   // eslint-disable-next-line no-unused-vars, no-empty-function, class-methods-use-this
   byteLengthMax(text) {}
 
@@ -150,6 +159,7 @@ export class CharsetEncoderBase {
    */
   // @ts-expect-error
   byteLength(text) {
+    this.reset();
     let total = 0;
     const buf = new Uint8Array(4096);
     do {
@@ -160,4 +170,8 @@ export class CharsetEncoderBase {
     } while (text.length);
     return total;
   }
+
+  /** @abstract */
+  // eslint-disable-next-line no-empty-function, class-methods-use-this
+  reset() {}
 }

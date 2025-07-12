@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "iconv-tiny",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Pure JS ESM Encodings for Browser and NodeJS",
   "sideEffects": false,
   "keywords": [
@@ -38,7 +38,7 @@
     "coverage": "vitest run --coverage main.test.mjs",
     "test": "vitest run",
     "build": "npm run lint && npm run generate && npm run test && npm run coverage",
-    "dev": "node scripts/server.js"
+    "dev": "node scripts/server.mjs"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.x",
@@ -52,7 +52,7 @@
     "eslint": "^9.x",
     "eslint-plugin-jsdoc": "^51.x",
     "express": "^5.x",
-    "google-closure-compiler": "^20250625.0.0",
+    "google-closure-compiler": "^20250709.0.0",
     "iconv-lite": "^0.6.3",
     "prettier": "^3.x",
     "serve-static": "^2.x",

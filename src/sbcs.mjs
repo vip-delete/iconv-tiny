@@ -38,7 +38,6 @@ class SBCSDecoder {
       const ch = b2c[byte];
       u16[i] = ch === REPLACEMENT_CHARACTER_CODE ? (handler(byte, i) ?? ch) : ch;
     }
-
     return getString(u16);
   }
 }
@@ -99,6 +98,14 @@ class SBCSEncoder extends CharsetEncoderBase {
    */
   byteLength(text) {
     return this.byteLengthMax(text);
+  }
+
+  /**
+   * @override
+   */
+  // eslint-disable-next-line class-methods-use-this
+  reset() {
+    // no-op: no state to reset
   }
 }
 

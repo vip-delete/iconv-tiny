@@ -1,7 +1,7 @@
 import iconvLite from "iconv-lite";
 import { CP1251 as CP } from "iconv-tiny";
 
-const runs = 10000;
+const runs = 1000;
 const kb = 256;
 
 const mb = kb / 1024;
@@ -48,7 +48,7 @@ console.log(`\nCP1251: Encode ${kb}KB text ${runs} times:`);
 run("iconv-lite", () => iconvLiteEncoder.write(text));
 run("iconv-tiny", () => encoder.encodeInto(text, temp));
 
-console.log(`\nnCP1251: Decode ${kb}KB array ${runs} times:`);
+console.log(`\nCP1251: Decode ${kb}KB array ${runs} times:`);
 run("iconv-lite", () => iconvLiteDecoder.write(buffer));
 run("iconv-tiny", () => decoder.decode(buf));
 run("iconv-tiny", () => decoderNative.decode(buf), " <--- native:true");

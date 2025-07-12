@@ -1,8 +1,8 @@
 import { Charset, CharsetEncoderBase, NativeCharsetDecoder, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
 
 const BOM_CHAR = "\ufeff";
-const STRIP_BOM_DEFAULT = 1;
-const ADD_BOM_DEFAULT = 0;
+const STRIP_BOM_DEFAULT = true;
+const ADD_BOM_DEFAULT = false;
 
 /**
  * @param {string} src
@@ -123,11 +123,12 @@ class UTF8Decoder extends NativeCharsetDecoder {
  */
 class UTF8Encoder extends CharsetEncoderBase {
   /**
-   * @param {number} doBOM
+   * @param {boolean} doBOM
    */
   constructor(doBOM) {
     super();
     this.doBOM = doBOM;
+    this.appendBOM = doBOM;
     this.encoder = new TextEncoder();
   }
 
@@ -139,9 +140,9 @@ class UTF8Encoder extends CharsetEncoderBase {
    */
   // @ts-expect-error
   encodeInto(src, dst) {
-    const { doBOM } = this;
+    const { appendBOM } = this;
     let j = 0;
-    if (doBOM) {
+    if (appendBOM) {
       if (dst.length < 3) {
         return { read: 0, written: 0 };
       }
@@ -149,7 +150,7 @@ class UTF8Encoder extends CharsetEncoderBase {
       dst[1] = 0xbb;
       dst[2] = 0xbf;
       j += 3;
-      this.doBOM = 0;
+      this.appendBOM = false;
     }
     const { read, written } = this.encoder.encodeInto(src, dst.subarray(j));
     return { read, written: written + j };
@@ -163,6 +164,13 @@ class UTF8Encoder extends CharsetEncoderBase {
   byteLengthMax(src) {
     return (this.doBOM ? 4 : 0) + src.length * 4;
   }
+
+  /**
+   * @override
+   */
+  reset() {
+    this.appendBOM = this.doBOM;
+  }
 }
 
 /**
@@ -171,13 +179,14 @@ class UTF8Encoder extends CharsetEncoderBase {
  */
 class UnicodeEncoder extends CharsetEncoderBase {
   /**
-   * @param {number} doBOM
+   * @param {boolean} doBOM
    * @param {number} i - 0 for UTF-16, 1 for UTF-32
    * @param {number} bo - 0 for LE, 1 for BE
    */
   constructor(doBOM, i, bo) {
     super();
     this.doBOM = doBOM;
+    this.appendBOM = doBOM;
     this.sz = 1 << (i + 1);
     // eslint-disable-next-line no-nested-ternary
     this.put = i ? (bo ? put32BE : put32LE) : bo ? put16BE : put16LE;
@@ -191,15 +200,15 @@ class UnicodeEncoder extends CharsetEncoderBase {
    */
   // @ts-expect-error
   encodeInto(src, dst) {
-    const { doBOM, sz, put } = this;
+    const { appendBOM, sz, put } = this;
     let j = 0;
-    if (doBOM) {
+    if (appendBOM) {
       if (dst.length < sz) {
         return { read: 0, written: 0 };
       }
       put(BOM_CHAR, 0, dst, j);
       j += sz;
-      this.doBOM = 0;
+      this.appendBOM = false;
     }
     const max = Math.min(src.length, (dst.length - j) & ~(sz - 1));
     for (let i = 0; i < max; i++, j += sz) {
@@ -224,11 +233,18 @@ class UnicodeEncoder extends CharsetEncoderBase {
    */
   byteLength(text) {
     if (this.sz === 4) {
-      // UTF-32
+      // UTF-32: a surrogate pair (two UTF-16 code units) is one UTF-32 code unit (4 bytes)
       return super.byteLength(text);
     }
     // UTF-16
     return this.byteLengthMax(text);
+  }
+
+  /**
+   * @override
+   */
+  reset() {
+    this.appendBOM = this.doBOM;
   }
 }
 

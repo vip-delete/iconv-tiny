@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.2] - 2025-07-12
+
+* fix byteLength
+
+## [1.2.1] - 2025-06-14
+
+* fix package.json
+
 ## [1.2.0] - 2025-06-14
 
 * Make Closure Compiler optional, Add ESBuild and produce [**iconv-tiny.mjs**](dist/iconv-tiny.mjs) only.

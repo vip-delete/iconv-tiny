@@ -1,5 +1,5 @@
 /**
- * iconv-tiny v1.2.1
+ * iconv-tiny v1.2.2
  * (c) 2025-present vip.delete
  * @license MIT
  **/
@@ -78,6 +78,14 @@ var DEFAULT_NATIVE_DECODE = false;
 var STRING_SMALLSIZE = 192;
 var STRING_CHUNKSIZE = 1024;
 var UTF16 = new TextDecoder("UTF-16LE", { fatal: true });
+var getStringFallback = (u16) => {
+  const len = u16.length;
+  const result = [];
+  for (let i = 0; i < len; i += STRING_CHUNKSIZE) {
+    result.push(String.fromCharCode(...u16.subarray(i, i + STRING_CHUNKSIZE)));
+  }
+  return result.join("");
+};
 var getString = (u16) => {
   const len = u16.length;
   if (len <= STRING_SMALLSIZE) {
@@ -86,12 +94,8 @@ var getString = (u16) => {
   try {
     return UTF16.decode(u16);
   } catch {
+    return getStringFallback(u16);
   }
-  const result = [];
-  for (let i = 0; i < len; i += STRING_CHUNKSIZE) {
-    result.push(String.fromCharCode(...u16.subarray(i, i + STRING_CHUNKSIZE)));
-  }
-  return result.join("");
 };
 var Charset = class {
   /**
@@ -156,6 +160,7 @@ var CharsetEncoderBase = class {
    */
   // @ts-expect-error
   encode(text) {
+    this.reset();
     if (!text) {
       return new Uint8Array(0);
     }
@@ -165,7 +170,7 @@ var CharsetEncoderBase = class {
   }
   // @ts-expect-error
   // eslint-disable-next-line jsdoc/empty-tags
-  /** @abstract @param {string} text @returns {number}  */
+  /** @abstract @param {string} text @returns {number} */
   // eslint-disable-next-line no-unused-vars, no-empty-function, class-methods-use-this
   byteLengthMax(text) {
   }
@@ -176,6 +181,7 @@ var CharsetEncoderBase = class {
    */
   // @ts-expect-error
   byteLength(text) {
+    this.reset();
     let total = 0;
     const buf = new Uint8Array(4096);
     do {
@@ -184,6 +190,10 @@ var CharsetEncoderBase = class {
       total += written;
     } while (text.length);
     return total;
+  }
+  /** @abstract */
+  // eslint-disable-next-line no-empty-function, class-methods-use-this
+  reset() {
   }
 };
 
@@ -269,6 +279,12 @@ var SBCSEncoder = class extends CharsetEncoderBase {
    */
   byteLength(text) {
     return this.byteLengthMax(text);
+  }
+  /**
+   * @override
+   */
+  // eslint-disable-next-line class-methods-use-this
+  reset() {
   }
 };
 var SBCSCharset = class extends Charset {
@@ -374,8 +390,8 @@ var SBCS = class {
 
 // src/unicode.mjs
 var BOM_CHAR = "\uFEFF";
-var STRIP_BOM_DEFAULT = 1;
-var ADD_BOM_DEFAULT = 0;
+var STRIP_BOM_DEFAULT = true;
+var ADD_BOM_DEFAULT = false;
 var put16LE = (src, i, dst, j) => {
   const cp = src.charCodeAt(i);
   dst[j] = cp;
@@ -440,11 +456,12 @@ var UTF8Decoder = class extends NativeCharsetDecoder {
 };
 var UTF8Encoder = class extends CharsetEncoderBase {
   /**
-   * @param {number} doBOM
+   * @param {boolean} doBOM
    */
   constructor(doBOM) {
     super();
     this.doBOM = doBOM;
+    this.appendBOM = doBOM;
     this.encoder = new TextEncoder();
   }
   /**
@@ -455,9 +472,9 @@ var UTF8Encoder = class extends CharsetEncoderBase {
    */
   // @ts-expect-error
   encodeInto(src, dst) {
-    const { doBOM } = this;
+    const { appendBOM } = this;
     let j = 0;
-    if (doBOM) {
+    if (appendBOM) {
       if (dst.length < 3) {
         return { read: 0, written: 0 };
       }
@@ -465,7 +482,7 @@ var UTF8Encoder = class extends CharsetEncoderBase {
       dst[1] = 187;
       dst[2] = 191;
       j += 3;
-      this.doBOM = 0;
+      this.appendBOM = false;
     }
     const { read, written } = this.encoder.encodeInto(src, dst.subarray(j));
     return { read, written: written + j };
@@ -478,16 +495,23 @@ var UTF8Encoder = class extends CharsetEncoderBase {
   byteLengthMax(src) {
     return (this.doBOM ? 4 : 0) + src.length * 4;
   }
+  /**
+   * @override
+   */
+  reset() {
+    this.appendBOM = this.doBOM;
+  }
 };
 var UnicodeEncoder = class extends CharsetEncoderBase {
   /**
-   * @param {number} doBOM
+   * @param {boolean} doBOM
    * @param {number} i - 0 for UTF-16, 1 for UTF-32
    * @param {number} bo - 0 for LE, 1 for BE
    */
   constructor(doBOM, i, bo) {
     super();
     this.doBOM = doBOM;
+    this.appendBOM = doBOM;
     this.sz = 1 << i + 1;
     this.put = i ? bo ? put32BE : put32LE : bo ? put16BE : put16LE;
   }
@@ -499,15 +523,15 @@ var UnicodeEncoder = class extends CharsetEncoderBase {
    */
   // @ts-expect-error
   encodeInto(src, dst) {
-    const { doBOM, sz, put } = this;
+    const { appendBOM, sz, put } = this;
     let j = 0;
-    if (doBOM) {
+    if (appendBOM) {
       if (dst.length < sz) {
         return { read: 0, written: 0 };
       }
       put(BOM_CHAR, 0, dst, j);
       j += sz;
-      this.doBOM = 0;
+      this.appendBOM = false;
     }
     const max = Math.min(src.length, dst.length - j & ~(sz - 1));
     for (let i = 0; i < max; i++, j += sz) {
@@ -533,6 +557,12 @@ var UnicodeEncoder = class extends CharsetEncoderBase {
       return super.byteLength(text);
     }
     return this.byteLengthMax(text);
+  }
+  /**
+   * @override
+   */
+  reset() {
+    this.appendBOM = this.doBOM;
   }
 };
 var POSTFIX = ["LE", "BE", ""];

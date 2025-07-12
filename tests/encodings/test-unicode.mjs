@@ -127,6 +127,11 @@ test("UTF-8", () => {
   expect(utf8.newEncoder().byteLength(big2)).toBe(3 * 10000);
   expect(utf8.newEncoder({ addBOM: true }).byteLength(big2)).toBe(3 + 3 * 10000);
 
+  const utf8EncoderWithBOM = utf8.newEncoder({ addBOM: true });
+  expect(utf8EncoderWithBOM.byteLength("1")).toBe(3 + 1);
+  expect(utf8EncoderWithBOM.encode("1")).toStrictEqual(new Uint8Array([0xef, 0xbb, 0xbf, 0x31]));
+  expect(utf8EncoderWithBOM.byteLength("1")).toBe(3 + 1);
+
   expect(new TextEncoder().encodeInto("😼", new Uint8Array(0))).toStrictEqual({ read: 0, written: 0 });
   expect(new TextEncoder().encodeInto("😼", new Uint8Array(1))).toStrictEqual({ read: 0, written: 0 });
   expect(new TextEncoder().encodeInto("😼", new Uint8Array(2))).toStrictEqual({ read: 0, written: 0 });

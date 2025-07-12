@@ -42,7 +42,7 @@ or use CDN:
 <script type="importmap">
   {
     "imports": {
-      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.2.0/dist/iconv-tiny.mjs"
+      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.2.2/dist/iconv-tiny.mjs"
     }
   }
 </script>
@@ -121,7 +121,7 @@ All encodings are generated automatically from http://www.unicode.org/Public/MAP
 Comparison with iconv-lite module (Core i7-7500U CPU @ 2.7GHz, Node v24.2.0). Note: your results may vary, so please always check on your hardware.
 
 ```
-operation          iconv-lite@0.6.3   iconv-tiny@1.2.0
+operation          iconv-lite@0.6.3   iconv-tiny@1.2.2
 ------------------------------------------------------
 encode('win1251')     ~598 Mb/s          ~622 Mb/s
 decode('win1251')     ~218 Mb/s          ~263 Mb/s
@@ -156,8 +156,8 @@ $ npm run coverage
 ----------------|---------|----------|---------|---------|-------------------
 File            | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 ----------------|---------|----------|---------|---------|-------------------
-All files       |     100 |      100 |   98.21 |     100 |
- commons.mjs    |     100 |      100 |   88.88 |     100 |
+All files       |     100 |      100 |   96.72 |     100 |
+ commons.mjs    |     100 |      100 |   81.81 |     100 |
  iconv-tiny.mjs |     100 |      100 |     100 |     100 |
  sbcs.mjs       |     100 |      100 |     100 |     100 |
  unicode.mjs    |     100 |      100 |     100 |     100 |

@@ -69,33 +69,31 @@ const App = {
       };
     }
 
+    const originText = ref();
+    const copyTimer = ref();
+
     /**
      * @param {Event} e
      */
-    function copyText(e) {
-      copy(text.value, e.target);
-    }
-
-    /**
-     * @param {string} text
-     * @param {*} btn
-     */
-    async function copy(text, btn) {
+    async function copyText(e) {
+      /**
+       * @type {*}
+       */
+      const btn = e.target;
       try {
-        if (!btn.originText) {
-          btn.originText = btn.innerText;
+        if (!originText.value) {
+          originText.value = btn.innerText;
         }
-        let timer = btn.timer;
-        if (timer) {
-          clearTimeout(timer);
+        if (copyTimer.value) {
+          clearTimeout(copyTimer.value);
         }
         if (navigator.clipboard) {
-          await navigator.clipboard.writeText(text);
+          await navigator.clipboard.writeText(text.value);
           const copiedText = "Copied!";
-          const padding = btn.originText.length - copiedText.length;
+          const padding = originText.value.length - copiedText.length;
           btn.innerHTML = copiedText + (padding > 0 ? "&nbsp;".repeat(padding) : "");
-          btn.timer = setTimeout(() => {
-            btn.innerText = btn.originText;
+          copyTimer.value = setTimeout(() => {
+            btn.innerText = originText.value;
           }, 1000);
         } else {
           error.value = "No clipboard";
