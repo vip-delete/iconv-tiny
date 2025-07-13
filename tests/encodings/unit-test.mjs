@@ -29,13 +29,13 @@ test("iconvTiny 2", () => {
     iconv.encode("Hello", "12");
     throw new Error();
   } catch (e) {
-    expect(/** @type {Error} */ (e).message).toBe(`Encoding "12" not supported`);
+    expect(e.message).toBe(`Encoding "12" not supported`);
   }
   try {
     iconv.encode("Hello", "test");
     throw new Error();
   } catch (e) {
-    expect(/** @type {Error} */ (e).message).toBe(`Encoding "test" not supported`);
+    expect(e.message).toBe(`Encoding "test" not supported`);
   }
 });
 

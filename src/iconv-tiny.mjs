@@ -1,6 +1,6 @@
 /**
  * @param {string} encoding
- * @returns {string}
+ * @return {string}
  */
 export const canonicalize = (encoding) =>
   encoding
@@ -50,7 +50,7 @@ export class IconvTiny {
    * @param {!Uint8Array} array
    * @param {string} encoding
    * @param {!ns.OptionsAndDecoderOptions} [options]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(array, encoding, options) {
@@ -62,7 +62,7 @@ export class IconvTiny {
    * @param {string} content
    * @param {string} encoding
    * @param {!ns.OptionsAndEncoderOptions} [options]
-   * @returns {!Uint8Array}
+   * @return {!Uint8Array}
    */
   // @ts-expect-error
   encode(content, encoding, options) {
@@ -73,7 +73,7 @@ export class IconvTiny {
    * @override
    * @param {string} name
    * @param {!ns.Options} [options]
-   * @returns {!ns.Encoding}
+   * @return {!ns.Encoding}
    */
   // @ts-expect-error
   getEncoding(name, options) {

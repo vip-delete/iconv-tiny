@@ -11,7 +11,7 @@ let ns = {
      * @param {!Uint8Array} array
      * @param {string} encoding
      * @param {!ns.OptionsAndDecoderOptions} [options]
-     * @returns {string}
+     * @return {string}
      */
     decode(array, encoding, options) {}
 
@@ -19,21 +19,21 @@ let ns = {
      * @param {string} content
      * @param {string} encoding
      * @param {!ns.OptionsAndEncoderOptions} [options]
-     * @returns {!Uint8Array}
+     * @return {!Uint8Array}
      */
     encode(content, encoding, options) {}
 
     /**
      * @param {string} name
      * @param {!ns.Options} [options]
-     * @returns {!ns.Encoding}
+     * @return {!ns.Encoding}
      */
     getEncoding(name, options) {}
   },
 
   /**
    * @param {string} encoding
-   * @returns {string}
+   * @return {string}
    */
   canonicalize(encoding) {},
 
@@ -42,33 +42,33 @@ let ns = {
    */
   Encoding: class {
     /**
-     * @returns {string}
+     * @return {string}
      */
     getName() {}
 
     /**
      * @param {!Uint8Array} array
      * @param {ns.DecoderOptions} [options]
-     * @returns {string}
+     * @return {string}
      */
     decode(array, options) {}
 
     /**
      * @param {string} text
      * @param {ns.EncoderOptions} [options]
-     * @returns {!Uint8Array}
+     * @return {!Uint8Array}
      */
     encode(text, options) {}
 
     /**
      * @param {ns.DecoderOptions} [options]
-     * @returns {!ns.CharsetDecoder}
+     * @return {!ns.CharsetDecoder}
      */
     newDecoder(options) {}
 
     /**
      * @param {ns.EncoderOptions} [options]
-     * @returns {!ns.CharsetEncoder}
+     * @return {!ns.CharsetEncoder}
      */
     newEncoder(options) {}
   },
@@ -79,7 +79,7 @@ let ns = {
   EncodingFactory: class {
     /**
      * @param {!ns.Options} [options]
-     * @returns {!ns.Encoding}
+     * @return {!ns.Encoding}
      */
     create(options) {}
   },
@@ -90,7 +90,7 @@ let ns = {
   CharsetDecoder: class {
     /**
      * @param {!Uint8Array} [array]
-     * @returns {string}
+     * @return {string}
      */
     decode(array) {}
   },
@@ -101,20 +101,20 @@ let ns = {
   CharsetEncoder: class {
     /**
      * @param {string} [text]
-     * @returns {!Uint8Array}
+     * @return {!Uint8Array}
      */
     encode(text) {}
 
     /**
      * @param {string} src
      * @param {!Uint8Array} dst
-     * @returns {!ns.TextEncoderEncodeIntoResult}
+     * @return {!ns.TextEncoderEncodeIntoResult}
      */
     encodeInto(src, dst) {}
 
     /**
      * @param {string} src
-     * @returns {number}
+     * @return {number}
      */
     byteLength(src) {}
   },

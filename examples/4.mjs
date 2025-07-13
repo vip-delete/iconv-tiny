@@ -15,7 +15,7 @@ for (let i = 0; i < 256; i++) {
 
 /**
  * @param {string} graphics
- * @returns {!Array<number|string>}
+ * @return {!Array<number|string>}
  */
 const createOverrides = (graphics) => {
   const overrides = [];

@@ -26,7 +26,16 @@ import config from "./config.json" with { type: "json" };
  * }} FileContent
  */
 
-const banner = getBanner();
+/**
+ * @param {boolean} condition
+ * @param {string} [msg]
+ * @return {undefined}
+ */
+const assert = (condition, msg) => {
+  if (!condition) {
+    throw new Error(msg);
+  }
+};
 
 /**
  * @type {!Array<!Array<string>>}
@@ -45,19 +54,8 @@ const STRING_ESCAPE_MAPPINGS = [
 ];
 
 /**
- * @param {boolean} condition
- * @param {string} [msg]
- * @returns {undefined}
- */
-const assert = (condition, msg) => {
-  if (!condition) {
-    throw new Error(msg);
-  }
-};
-
-/**
  * @param {string} str
- * @returns {string}
+ * @return {string}
  */
 const escape = (str) => {
   for (let i = 0; i < STRING_ESCAPE_MAPPINGS.length; i++) {
@@ -70,7 +68,7 @@ const escape = (str) => {
 /**
  * @param {?number} num
  * @param {number} pad
- * @returns {string}
+ * @return {string}
  */
 const hex = (num, pad) => {
   if (num === null) {
@@ -81,7 +79,7 @@ const hex = (num, pad) => {
 
 /**
  * @param {!Mapping} mapping
- * @returns {string}
+ * @return {string}
  */
 const getMappingStr = (mapping) => `${hex(mapping.key, 2)} ${hex(mapping.value, 4)} #${mapping.comment}`;
 
@@ -110,7 +108,7 @@ const validate = (mappings) => {
 
 /**
  * @param {string} content
- * @returns {!Array<!Mapping>}
+ * @return {!Array<!Mapping>}
  */
 const parseMappings = (content) => {
   const lines = content.split("\n");
@@ -163,7 +161,7 @@ const applyOverrides = (mappings, name) => {
 /**
  * @param {string} name
  * @param {string} content
- * @returns {!Uint16Array}
+ * @return {!Uint16Array}
  */
 const createB2C = (name, content) => {
   const mappings = parseMappings(content);
@@ -183,7 +181,7 @@ const createB2C = (name, content) => {
 
 /**
  * @param {!Uint16Array} b2c
- * @returns {string}
+ * @return {string}
  */
 const getBestArgs = (b2c) => {
   const overrides = [];
@@ -208,7 +206,7 @@ const getBestArgs = (b2c) => {
 };
 
 /**
- * @returns {!Promise<Array<!Encoding>>}
+ * @return {!Promise<Array<!Encoding>>}
  */
 const fetchEncodings = async () => {
   /**
@@ -320,6 +318,8 @@ const generateBundle = (encodings) => {
   const mjsContent = "export const\n" + mjs.join(",\n") + ";\n";
   const mtsContent = mts.join("\n") + "\n";
   writeFileSync("dist/iconv-tiny.d.mts", mtsContent);
+
+  const banner = getBanner();
 
   if (existsSync("dist/cc.mjs")) {
     // bundle with the Closure Compiled code

@@ -23,7 +23,7 @@ class SBCSDecoder {
   /**
    * @override
    * @param {!Uint8Array} [array]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(array) {
@@ -67,7 +67,7 @@ class SBCSEncoder extends CharsetEncoderBase {
    * @override
    * @param {string} src
    * @param {!Uint8Array} dst
-   * @returns {!ns.TextEncoderEncodeIntoResult}
+   * @return {!ns.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   encodeInto(src, dst) {
@@ -84,7 +84,7 @@ class SBCSEncoder extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   // eslint-disable-next-line class-methods-use-this
   byteLengthMax(text) {
@@ -94,7 +94,7 @@ class SBCSEncoder extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   byteLength(text) {
     return this.byteLengthMax(text);
@@ -135,7 +135,7 @@ class SBCSCharset extends Charset {
   /**
    * @override
    * @param {!ns.DecoderOptions} [options]
-   * @returns {!ns.CharsetDecoder}
+   * @return {!ns.CharsetDecoder}
    */
   // @ts-expect-error
   newDecoder(options) {
@@ -148,7 +148,7 @@ class SBCSCharset extends Charset {
   /**
    * @override
    * @param {!ns.EncoderOptions} [options]
-   * @returns {!ns.CharsetEncoder}
+   * @return {!ns.CharsetEncoder}
    */
   // @ts-expect-error
   newEncoder(options) {
@@ -166,7 +166,7 @@ class SBCSCharset extends Charset {
 
   /**
    * @private
-   * @returns {!ns.CharsetDecoder}
+   * @return {!ns.CharsetDecoder}
    */
   newNativeDecoder() {
     return new NativeCharsetDecoder(new TextDecoder(this.charsetName));
@@ -176,7 +176,7 @@ class SBCSCharset extends Charset {
 /**
  * @param {string} symbols
  * @param {string} diff
- * @returns {!Uint16Array}
+ * @return {!Uint16Array}
  */
 const getMappings = (symbols, diff) => {
   const mappings = new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
@@ -214,7 +214,7 @@ export class SBCS {
   /**
    * @override
    * @param {!ns.Options} [options]
-   * @returns {!ns.Encoding}
+   * @return {!ns.Encoding}
    */
   // @ts-expect-error
   create(options) {

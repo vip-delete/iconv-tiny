@@ -14,7 +14,10 @@ const output = cp1252.decode(buf, { defaultCharUnicode: "❓" });
 console.log(output); // ❓❓❓❓❓
 
 // default character as a function.
-const indexes = /** @type {Array<number>} */ ([]);
+/**
+ * @type {!Array<number>}
+ */
+const indexes = [];
 const output2 = cp1252.decode(buf, {
   defaultCharUnicode: (input, index) => {
     indexes.push(index);
@@ -43,7 +46,7 @@ try {
     },
   });
 } catch (e) {
-  console.error(/** @type {Error} */ (e).message); // Can't encode '⭐' at position 5
+  console.error(e.message); // Can't encode '⭐' at position 5
 }
 
 // JS strings use UTF-16, and Unicode characters with codes greater than U+FFFF

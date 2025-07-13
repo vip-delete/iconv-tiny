@@ -35,7 +35,7 @@ export const regressionTest = (encodingsList, iconvTiny) => {
   }
 
   /**
-   * @type {string[]}
+   * @type {!Array<string>}
    */
   const missing = encodingsList.filter((it) => !iconvLite.encodingExists(it));
   console.warn(`Missing encodings in iconv-lite: ${missing}`);
@@ -98,13 +98,13 @@ export const regressionTest = (encodingsList, iconvTiny) => {
         }
       }
 
-      // // no BOM
+      // no BOM
       const expectedStr = iconvLite.decode(Buffer.from(expectedArr), name);
       const actualStr = iconvTiny.decode(actualArr, name);
       compareStr(name, expectedStr, ALL_SYMBOLS);
       compareStr(name, actualStr, ALL_SYMBOLS);
 
-      // // stripBOM: true (default)
+      // stripBOM: true (default)
       const expectedStr2 = iconvLite.decode(Buffer.from(expectedArrBom), name);
       const actualStr2 = iconvTiny.decode(actualArrBom, name);
       compareStr(name, expectedStr2, ALL_SYMBOLS);

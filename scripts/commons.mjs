@@ -14,25 +14,25 @@ export const getBanner = () =>
 
 /**
  * @param {string} rel
- * @returns {string}
+ * @return {string}
  */
 export const abs = (rel) => Path.resolve(Path.dirname(fileURLToPath(import.meta.url)), "../" + rel);
 
 /**
  * @param {string} filename
- * @returns {string}
+ * @return {string}
  */
 export const readFileSync = (filename) => fs.readFileSync(abs(filename), "utf-8");
 
 /**
  * @param {string} name
- * @returns {string}
+ * @return {string}
  */
 export const getIdentifier = (name) => name.replaceAll("-", "_").replaceAll(/[^0-9A-Z_]/gu, "");
 
 /**
  * @param {string} path
- * @returns {!string}
+ * @return {!string}
  */
 export const getExports = (path) => {
   const exports = readFileSync(path)
@@ -54,16 +54,6 @@ export const getExports = (path) => {
 };
 
 /**
- * @param {string} dir
- */
-export const rmSync = (dir) => {
-  if (fs.existsSync(abs(dir))) {
-    console.log(`DELETE: ${dir}`);
-    fs.rmSync(abs(dir), { recursive: true });
-  }
-};
-
-/**
  * @param {string} src
  * @param {string} dest
  */
@@ -73,13 +63,13 @@ export const copyFileSync = (src, dest) => {
 
 /**
  * @param {string} path
- * @returns {boolean}
+ * @return {boolean}
  */
 export const existsSync = (path) => fs.existsSync(abs(path));
 
 /**
  * @param {string} dir
- * @returns {undefined}
+ * @return {undefined}
  */
 export const mkdirSync = (dir) => {
   if (!fs.existsSync(abs(dir))) {
@@ -91,7 +81,7 @@ export const mkdirSync = (dir) => {
 /**
  * @param {string} filename
  * @param {string} content
- * @returns {undefined}
+ * @return {undefined}
  */
 export const writeFileSync = (filename, content) => {
   console.log(`WRITE:  ${filename}`);
@@ -102,7 +92,7 @@ export const writeFileSync = (filename, content) => {
  * @param {string} name
  * @param {string} outputWrapper
  * @param {string} outputFile
- * @param {string[]} files
+ * @param {!Array<string>} files
  */
 export const compile = async (name, outputWrapper, outputFile, files) => {
   const args = {
@@ -128,6 +118,7 @@ export const compile = async (name, outputWrapper, outputFile, files) => {
       if (stdout) {
         console.log(stdout);
       }
+
       if (stderr) {
         console.log(stderr);
       }

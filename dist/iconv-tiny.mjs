@@ -1,5 +1,5 @@
 /**
- * iconv-tiny v1.2.2
+ * iconv-tiny v1.2.3
  * (c) 2025-present vip.delete
  * @license MIT
  **/
@@ -31,7 +31,7 @@ var IconvTiny = class {
    * @param {!Uint8Array} array
    * @param {string} encoding
    * @param {!ns.OptionsAndDecoderOptions} [options]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(array, encoding, options) {
@@ -42,7 +42,7 @@ var IconvTiny = class {
    * @param {string} content
    * @param {string} encoding
    * @param {!ns.OptionsAndEncoderOptions} [options]
-   * @returns {!Uint8Array}
+   * @return {!Uint8Array}
    */
   // @ts-expect-error
   encode(content, encoding, options) {
@@ -52,7 +52,7 @@ var IconvTiny = class {
    * @override
    * @param {string} name
    * @param {!ns.Options} [options]
-   * @returns {!ns.Encoding}
+   * @return {!ns.Encoding}
    */
   // @ts-expect-error
   getEncoding(name, options) {
@@ -106,7 +106,7 @@ var Charset = class {
   }
   /**
    * @override
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   getName() {
@@ -116,7 +116,7 @@ var Charset = class {
    * @override
    * @param {!Uint8Array} array
    * @param {!ns.DecoderOptions} [options]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(array, options) {
@@ -127,7 +127,7 @@ var Charset = class {
    * @override
    * @param {string} text
    * @param {!ns.EncoderOptions} [options]
-   * @returns {!Uint8Array}
+   * @return {!Uint8Array}
    */
   // @ts-expect-error
   encode(text, options) {
@@ -145,7 +145,7 @@ var NativeCharsetDecoder = class {
   /**
    * @override
    * @param {!Uint8Array} [array]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(array) {
@@ -156,7 +156,7 @@ var CharsetEncoderBase = class {
   /**
    * @override
    * @param {string} [text]
-   * @returns {!Uint8Array}
+   * @return {!Uint8Array}
    */
   // @ts-expect-error
   encode(text) {
@@ -170,14 +170,14 @@ var CharsetEncoderBase = class {
   }
   // @ts-expect-error
   // eslint-disable-next-line jsdoc/empty-tags
-  /** @abstract @param {string} text @returns {number} */
+  /** @abstract @param {string} text @return {number} */
   // eslint-disable-next-line no-unused-vars, no-empty-function, class-methods-use-this
   byteLengthMax(text) {
   }
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   // @ts-expect-error
   byteLength(text) {
@@ -214,7 +214,7 @@ var SBCSDecoder = class {
   /**
    * @override
    * @param {!Uint8Array} [array]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(array) {
@@ -250,7 +250,7 @@ var SBCSEncoder = class extends CharsetEncoderBase {
    * @override
    * @param {string} src
    * @param {!Uint8Array} dst
-   * @returns {!ns.TextEncoderEncodeIntoResult}
+   * @return {!ns.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   encodeInto(src, dst) {
@@ -266,7 +266,7 @@ var SBCSEncoder = class extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   // eslint-disable-next-line class-methods-use-this
   byteLengthMax(text) {
@@ -275,7 +275,7 @@ var SBCSEncoder = class extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   byteLength(text) {
     return this.byteLengthMax(text);
@@ -306,7 +306,7 @@ var SBCSCharset = class extends Charset {
   /**
    * @override
    * @param {!ns.DecoderOptions} [options]
-   * @returns {!ns.CharsetDecoder}
+   * @return {!ns.CharsetDecoder}
    */
   // @ts-expect-error
   newDecoder(options) {
@@ -318,7 +318,7 @@ var SBCSCharset = class extends Charset {
   /**
    * @override
    * @param {!ns.EncoderOptions} [options]
-   * @returns {!ns.CharsetEncoder}
+   * @return {!ns.CharsetEncoder}
    */
   // @ts-expect-error
   newEncoder(options) {
@@ -335,7 +335,7 @@ var SBCSCharset = class extends Charset {
   }
   /**
    * @private
-   * @returns {!ns.CharsetDecoder}
+   * @return {!ns.CharsetDecoder}
    */
   newNativeDecoder() {
     return new NativeCharsetDecoder(new TextDecoder(this.charsetName));
@@ -372,7 +372,7 @@ var SBCS = class {
   /**
    * @override
    * @param {!ns.Options} [options]
-   * @returns {!ns.Encoding}
+   * @return {!ns.Encoding}
    */
   // @ts-expect-error
   create(options) {
@@ -468,7 +468,7 @@ var UTF8Encoder = class extends CharsetEncoderBase {
    * @override
    * @param {string} src
    * @param {!Uint8Array} dst
-   * @returns {!ns.TextEncoderEncodeIntoResult}
+   * @return {!ns.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   encodeInto(src, dst) {
@@ -490,7 +490,7 @@ var UTF8Encoder = class extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} src
-   * @returns {number}
+   * @return {number}
    */
   byteLengthMax(src) {
     return (this.doBOM ? 4 : 0) + src.length * 4;
@@ -519,7 +519,7 @@ var UnicodeEncoder = class extends CharsetEncoderBase {
    * @override
    * @param {string} src
    * @param {!Uint8Array} dst
-   * @returns {!ns.TextEncoderEncodeIntoResult}
+   * @return {!ns.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   encodeInto(src, dst) {
@@ -542,7 +542,7 @@ var UnicodeEncoder = class extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   byteLengthMax(text) {
     return (this.doBOM ? this.sz : 0) + text.length * this.sz;
@@ -550,7 +550,7 @@ var UnicodeEncoder = class extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   byteLength(text) {
     if (this.sz === 4) {
@@ -590,7 +590,7 @@ var UTF32Decoder = class {
   /**
    * @override
    * @param {!Uint8Array} [src]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(src) {
@@ -635,7 +635,7 @@ var UnicodeCharset = class extends Charset {
   /**
    * @override
    * @param {!ns.DecoderOptions} [options]
-   * @returns {!ns.CharsetDecoder}
+   * @return {!ns.CharsetDecoder}
    */
   // @ts-expect-error
   newDecoder(options) {
@@ -644,7 +644,7 @@ var UnicodeCharset = class extends Charset {
   /**
    * @override
    * @param {!ns.EncoderOptions} [options]
-   * @returns {!ns.CharsetEncoder}
+   * @return {!ns.CharsetEncoder}
    */
   // @ts-expect-error
   newEncoder(options) {
@@ -662,7 +662,7 @@ var Unicode = class {
   }
   /**
    * @override
-   * @returns {!ns.Encoding}
+   * @return {!ns.Encoding}
    */
   // @ts-expect-error
   create() {

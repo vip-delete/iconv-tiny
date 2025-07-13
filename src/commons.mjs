@@ -19,7 +19,7 @@ const UTF16 = new TextDecoder("UTF-16LE", { fatal: true });
 
 /**
  * @param {!Uint16Array} u16
- * @returns {string}
+ * @return {string}
  */
 const getStringFallback = (u16) => {
   const len = u16.length;
@@ -32,7 +32,7 @@ const getStringFallback = (u16) => {
 
 /**
  * @param {!Uint16Array} u16
- * @returns {string}
+ * @return {string}
  */
 export const getString = (u16) => {
   const len = u16.length;
@@ -61,7 +61,7 @@ export class Charset {
 
   /**
    * @override
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   getName() {
@@ -72,7 +72,7 @@ export class Charset {
    * @override
    * @param {!Uint8Array} array
    * @param {!ns.DecoderOptions} [options]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(array, options) {
@@ -88,7 +88,7 @@ export class Charset {
    * @override
    * @param {string} text
    * @param {!ns.EncoderOptions} [options]
-   * @returns {!Uint8Array}
+   * @return {!Uint8Array}
    */
   // @ts-expect-error
   encode(text, options) {
@@ -115,7 +115,7 @@ export class NativeCharsetDecoder {
   /**
    * @override
    * @param {!Uint8Array} [array]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(array) {
@@ -132,7 +132,7 @@ export class CharsetEncoderBase {
   /**
    * @override
    * @param {string} [text]
-   * @returns {!Uint8Array}
+   * @return {!Uint8Array}
    */
   // @ts-expect-error
   encode(text) {
@@ -148,14 +148,14 @@ export class CharsetEncoderBase {
 
   // @ts-expect-error
   // eslint-disable-next-line jsdoc/empty-tags
-  /** @abstract @param {string} text @returns {number} */
+  /** @abstract @param {string} text @return {number} */
   // eslint-disable-next-line no-unused-vars, no-empty-function, class-methods-use-this
   byteLengthMax(text) {}
 
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   // @ts-expect-error
   byteLength(text) {

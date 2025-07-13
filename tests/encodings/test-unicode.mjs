@@ -67,7 +67,7 @@ const tests = [
 /**
  * @param {!ns.Encoding} encoding
  * @param {!Uint8Array} array
- * @returns {string}
+ * @return {string}
  */
 const decodeStream = (encoding, array) => {
   const decoder = encoding.newDecoder();
@@ -233,7 +233,7 @@ test("UTF-32", () => {
     expect(utf32be.decode(new Uint8Array(item.utf32bebom))).toBe(item.str);
     expect(utf32be.decode(new Uint8Array(item.utf32bebom), { stripBOM: false })).toBe("\ufeff" + item.str);
 
-    // // stream
+    // stream
     expect(decodeStream(utf32le, new Uint8Array(item.utf32le))).toBe(item.str);
     expect(decodeStream(utf32be, new Uint8Array(item.utf32be))).toBe(item.str);
     expect(decodeStream(utf32le, new Uint8Array(item.utf32lebom))).toBe(item.str);

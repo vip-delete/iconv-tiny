@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "iconv-tiny",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Pure JS ESM Encodings for Browser and NodeJS",
   "sideEffects": false,
   "keywords": [

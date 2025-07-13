@@ -5,7 +5,7 @@ const iconv = new IconvTiny(encodings, aliases);
 
 /**
  * @param {!Uint8Array} bytes
- * @returns {string}
+ * @return {string}
  */
 function toHexDump(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");

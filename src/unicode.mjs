@@ -9,7 +9,7 @@ const ADD_BOM_DEFAULT = false;
  * @param {number} i
  * @param {!Uint8Array} dst
  * @param {number} j
- * @returns {number}
+ * @return {number}
  */
 const put16LE = (src, i, dst, j) => {
   const cp = src.charCodeAt(i);
@@ -23,7 +23,7 @@ const put16LE = (src, i, dst, j) => {
  * @param {number} i
  * @param {!Uint8Array} dst
  * @param {number} j
- * @returns {number}
+ * @return {number}
  */
 const put16BE = (src, i, dst, j) => {
   const cp = src.charCodeAt(i);
@@ -37,7 +37,7 @@ const put16BE = (src, i, dst, j) => {
  * @param {number} i
  * @param {!Uint8Array} dst
  * @param {number} j
- * @returns {number}
+ * @return {number}
  */
 const put32LE = (src, i, dst, j) => {
   const cp = /** @type {number} */ (src.codePointAt(i));
@@ -53,7 +53,7 @@ const put32LE = (src, i, dst, j) => {
  * @param {number} i
  * @param {!Uint8Array} dst
  * @param {number} j
- * @returns {number}
+ * @return {number}
  */
 const put32BE = (src, i, dst, j) => {
   const cp = /** @type {number} */ (src.codePointAt(i));
@@ -67,14 +67,14 @@ const put32BE = (src, i, dst, j) => {
 /**
  * @param {!Uint8Array} src
  * @param {number} i
- * @returns {number}
+ * @return {number}
  */
 const get32LE = (src, i) => (src[i] | (src[i + 1] << 8) | (src[i + 2] << 16) | (src[i + 3] << 24)) >>> 0;
 
 /**
  * @param {!Uint8Array} src
  * @param {number} i
- * @returns {number}
+ * @return {number}
  */
 const get32BE = (src, i) => ((src[i] << 24) | (src[i + 1] << 16) | (src[i + 2] << 8) | src[i + 3]) >>> 0;
 
@@ -83,7 +83,7 @@ const get32BE = (src, i) => ((src[i] << 24) | (src[i + 1] << 16) | (src[i + 2] <
  * @param {!Uint8Array} dst
  * @param {number} j
  * @param {number} cp
- * @returns {number}
+ * @return {number}
  */
 const appendCodePoint = (dst, j, cp) => {
   if (cp > 0x10ffff) {
@@ -136,7 +136,7 @@ class UTF8Encoder extends CharsetEncoderBase {
    * @override
    * @param {string} src
    * @param {!Uint8Array} dst
-   * @returns {!ns.TextEncoderEncodeIntoResult}
+   * @return {!ns.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   encodeInto(src, dst) {
@@ -159,7 +159,7 @@ class UTF8Encoder extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} src
-   * @returns {number}
+   * @return {number}
    */
   byteLengthMax(src) {
     return (this.doBOM ? 4 : 0) + src.length * 4;
@@ -196,7 +196,7 @@ class UnicodeEncoder extends CharsetEncoderBase {
    * @override
    * @param {string} src
    * @param {!Uint8Array} dst
-   * @returns {!ns.TextEncoderEncodeIntoResult}
+   * @return {!ns.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   encodeInto(src, dst) {
@@ -220,7 +220,7 @@ class UnicodeEncoder extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   byteLengthMax(text) {
     return (this.doBOM ? this.sz : 0) + text.length * this.sz;
@@ -229,7 +229,7 @@ class UnicodeEncoder extends CharsetEncoderBase {
   /**
    * @override
    * @param {string} text
-   * @returns {number}
+   * @return {number}
    */
   byteLength(text) {
     if (this.sz === 4) {
@@ -293,7 +293,7 @@ class UTF32Decoder {
   /**
    * @override
    * @param {!Uint8Array} [src]
-   * @returns {string}
+   * @return {string}
    */
   // @ts-expect-error
   decode(src) {
@@ -339,8 +339,6 @@ class UTF32Decoder {
   }
 }
 
-/* eslint-disable jsdoc/valid-types */
-
 /**
  * @type {!Array<function(new: ns.CharsetDecoder, ...*)>}
  */
@@ -350,8 +348,6 @@ const DECODERS = [UTF16Decoder, UTF32Decoder, UTF8Decoder];
  * @type {!Array<function(new: ns.CharsetEncoder, ...*)>}
  */
 const ENCODERS = [UnicodeEncoder, UnicodeEncoder, UTF8Encoder];
-
-/* eslint-enable jsdoc/valid-types */
 
 /**
  * @implements {ns.Encoding}
@@ -370,7 +366,7 @@ class UnicodeCharset extends Charset {
   /**
    * @override
    * @param {!ns.DecoderOptions} [options]
-   * @returns {!ns.CharsetDecoder}
+   * @return {!ns.CharsetDecoder}
    */
   // @ts-expect-error
   newDecoder(options) {
@@ -380,7 +376,7 @@ class UnicodeCharset extends Charset {
   /**
    * @override
    * @param {!ns.EncoderOptions} [options]
-   * @returns {!ns.CharsetEncoder}
+   * @return {!ns.CharsetEncoder}
    */
   // @ts-expect-error
   newEncoder(options) {
@@ -403,7 +399,7 @@ export class Unicode {
 
   /**
    * @override
-   * @returns {!ns.Encoding}
+   * @return {!ns.Encoding}
    */
   // @ts-expect-error
   create() {
