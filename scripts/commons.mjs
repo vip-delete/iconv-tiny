@@ -14,25 +14,25 @@ export const getBanner = () =>
 
 /**
  * @param {string} rel
- * @return {string}
+ * @returns {string}
  */
 export const abs = (rel) => Path.resolve(Path.dirname(fileURLToPath(import.meta.url)), "../" + rel);
 
 /**
  * @param {string} filename
- * @return {string}
+ * @returns {string}
  */
 export const readFileSync = (filename) => fs.readFileSync(abs(filename), "utf-8");
 
 /**
  * @param {string} name
- * @return {string}
+ * @returns {string}
  */
 export const getIdentifier = (name) => name.replaceAll("-", "_").replaceAll(/[^0-9A-Z_]/gu, "");
 
 /**
  * @param {string} path
- * @return {!string}
+ * @returns {!string}
  */
 export const getExports = (path) => {
   const exports = readFileSync(path)
@@ -63,13 +63,13 @@ export const copyFileSync = (src, dest) => {
 
 /**
  * @param {string} path
- * @return {boolean}
+ * @returns {boolean}
  */
 export const existsSync = (path) => fs.existsSync(abs(path));
 
 /**
  * @param {string} dir
- * @return {undefined}
+ * @returns {undefined}
  */
 export const mkdirSync = (dir) => {
   if (!fs.existsSync(abs(dir))) {
@@ -81,7 +81,7 @@ export const mkdirSync = (dir) => {
 /**
  * @param {string} filename
  * @param {string} content
- * @return {undefined}
+ * @returns {undefined}
  */
 export const writeFileSync = (filename, content) => {
   console.log(`WRITE:  ${filename}`);

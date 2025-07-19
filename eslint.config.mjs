@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import stylistic from "@stylistic/eslint-plugin";
 import jsdoc from "eslint-plugin-jsdoc";
+import globals from "globals";
 
 export default [
   js.configs.all,
@@ -10,20 +11,9 @@ export default [
     semi: true,
   }),
   {
-    ignores: ["dist", "static", "src/externs.mjs"],
+    ignores: ["dist", "src/externs.mjs"],
   },
   {
-    languageOptions: {
-      globals: {
-        process: "readonly",
-        TextEncoder: "readonly",
-        TextDecoder: "readonly",
-        Buffer: "readonly",
-        fetch: "readonly",
-        console: "readonly",
-        ns: "writable",
-      },
-    },
     plugins: {
       "@stylistic": stylistic,
       jsdoc,
@@ -51,11 +41,39 @@ export default [
       "one-var": 0,
       "prefer-destructuring": 0,
       "prefer-template": 0,
-      "sort-keys": 0,
       "sort-imports": 0,
+      "sort-keys": 0,
+    },
+  },
+  {
+    files: ["src/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        TextDecoder: "readonly",
+        TextEncoder: "readonly",
+        ns: "writable",
+      },
     },
     settings: {
       jsdoc: { mode: "closure" },
+    },
+  },
+  {
+    files: ["examples/**/*.mjs", "scripts/**/*.mjs", "tests/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ns: "writable",
+      },
+    },
+  },
+  {
+    files: ["static/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ns: "writable",
+      },
     },
   },
 ];

@@ -67,7 +67,7 @@ const tests = [
 /**
  * @param {!ns.Encoding} encoding
  * @param {!Uint8Array} array
- * @return {string}
+ * @returns {string}
  */
 const decodeStream = (encoding, array) => {
   const decoder = encoding.newDecoder();

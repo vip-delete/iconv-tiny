@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 
 /**
  * @param {string} rel
- * @return {string}
+ * @returns {string}
  */
 const abs = (rel) => Path.resolve(Path.dirname(fileURLToPath(import.meta.url)), rel);
 

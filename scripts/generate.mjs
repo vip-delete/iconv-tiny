@@ -29,7 +29,7 @@ import config from "./config.json" with { type: "json" };
 /**
  * @param {boolean} condition
  * @param {string} [msg]
- * @return {undefined}
+ * @returns {undefined}
  */
 const assert = (condition, msg) => {
   if (!condition) {
@@ -55,7 +55,7 @@ const STRING_ESCAPE_MAPPINGS = [
 
 /**
  * @param {string} str
- * @return {string}
+ * @returns {string}
  */
 const escape = (str) => {
   for (let i = 0; i < STRING_ESCAPE_MAPPINGS.length; i++) {
@@ -68,7 +68,7 @@ const escape = (str) => {
 /**
  * @param {?number} num
  * @param {number} pad
- * @return {string}
+ * @returns {string}
  */
 const hex = (num, pad) => {
   if (num === null) {
@@ -79,7 +79,7 @@ const hex = (num, pad) => {
 
 /**
  * @param {!Mapping} mapping
- * @return {string}
+ * @returns {string}
  */
 const getMappingStr = (mapping) => `${hex(mapping.key, 2)} ${hex(mapping.value, 4)} #${mapping.comment}`;
 
@@ -108,7 +108,7 @@ const validate = (mappings) => {
 
 /**
  * @param {string} content
- * @return {!Array<!Mapping>}
+ * @returns {!Array<!Mapping>}
  */
 const parseMappings = (content) => {
   const lines = content.split("\n");
@@ -161,7 +161,7 @@ const applyOverrides = (mappings, name) => {
 /**
  * @param {string} name
  * @param {string} content
- * @return {!Uint16Array}
+ * @returns {!Uint16Array}
  */
 const createB2C = (name, content) => {
   const mappings = parseMappings(content);
@@ -181,7 +181,7 @@ const createB2C = (name, content) => {
 
 /**
  * @param {!Uint16Array} b2c
- * @return {string}
+ * @returns {string}
  */
 const getBestArgs = (b2c) => {
   const overrides = [];
@@ -206,7 +206,7 @@ const getBestArgs = (b2c) => {
 };
 
 /**
- * @return {!Promise<Array<!Encoding>>}
+ * @returns {!Promise<Array<!Encoding>>}
  */
 const fetchEncodings = async () => {
   /**
