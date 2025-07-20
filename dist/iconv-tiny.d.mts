@@ -56,27 +56,27 @@ type DecoderOptions = {
    */
   defaultCharUnicode?: string | DefaultCharUnicodeFunction;
   /**
-   * Specifies the behavior of "decode" method (default: false)
+   * Specifies the behavior of the "decode" method (default: false)
    *
-   * - true: use native TextDecoder whenever possible
-   * - false: use "software" decoding according to the mapping rules.
+   * - true: use the native TextDecoder when possible.
+   * - false: use a software-based decoder that relies on a mapping table.
+   *
+   * This option is ignored for Unicode, as it uses algorithmic rules rather than a mapping table.
    */
   native?: boolean;
   /**
-   * UTF-16LE, UTF-16BE, UTF-32LE, UTF-32BE: BOM is stripped by default, unless overridden by stripBOM: false
-   * UTF-16, UTF-32: Use BOM, fallback to LE, unless overriden by defaultEncoding: 'UTF-16BE' or 'UTF-32BE';
+   * Unicode only. BOM is stripped by default, unless overridden by stripBOM: false
    */
   stripBOM?: boolean;
 };
 
 type EncoderOptions = {
   /**
-   * Sets the replacement byte used by the "encode" method for unmapped Unicode symbols (default: "?").
+   * Sets the replacement byte used by the "encode" method for unmapped symbols (default: "?").
    */
   defaultCharByte?: string | DefaultCharByteFunction;
   /**
-   * UTF-16LE, UTF-16BE, UTF-32LE, UTF-32BE: No BOM added by default, unless overridden by addBOM: true
-   * UTF-16, UTF-32: Use LE and add BOM by default, unless overridden by addBOM: false
+   * Unicode only. No BOM added by default, unless overridden by addBOM: true
    */
   addBOM?: boolean;
 }

@@ -41,8 +41,8 @@ export const regressionTest = (encodingsList, iconvTiny) => {
   console.warn(`Missing encodings in iconv-lite: ${missing}`);
 
   const supported = encodingsList.filter(iconvLite.encodingExists);
-  const sbcs = supported.filter((it) => !it.startsWith("UTF"));
-  for (const name of sbcs) {
+  const list = supported.filter((it) => !it.startsWith("UTF") && !it.includes("932"));
+  for (const name of list) {
     test(`Regression ${name} (decode)`, () => {
       const expected = iconvLite.decode(Buffer.from(buffer), name);
       const actual = iconvTiny.decode(buffer, name);

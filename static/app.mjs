@@ -49,16 +49,19 @@ const App = {
     const defaultCharUnicodeCode = computed(() =>
       defaultCharUnicode.value.length > 0 ? "U+" + defaultCharUnicode.value.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0") : "",
     );
-    const native = ref();
+    const native = ref(false);
     const text = ref("Hε110! █▓▒░");
-    const hexDump = ref();
+    const hexDump = ref("");
 
     /**
      * @type {import("vue").Ref<?HTMLInputElement>}
      */
     const fileInput = ref(null);
-    const error = ref();
+    const error = ref("");
 
+    /**
+     * @returns {ns.Options & ns.DecoderOptions & ns.EncoderOptions}
+     */
     const options = () => {
       if (defaultCharByte.value.length > 0 && defaultCharByte.value.charCodeAt(0) > 255) {
         throw new Error(`DefaultCharByte code is U+${defaultCharByte.value.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")} but U+00XX expected.`);
@@ -75,7 +78,7 @@ const App = {
         hexDump.value = toHexDump(iconv.encode(text.value, encoding.value, options()));
         error.value = "";
       } catch (e) {
-        error.value = e;
+        error.value = String(e);
       }
     };
 
@@ -84,11 +87,11 @@ const App = {
         text.value = iconv.decode(new Uint8Array(fromHexDump(hexDump.value)), encoding.value, options());
         error.value = "";
       } catch (e) {
-        error.value = e;
+        error.value = String(e);
       }
     };
 
-    const originText = ref();
+    const originText = ref("");
     const copyTimer = ref();
 
     /**

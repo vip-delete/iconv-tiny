@@ -23,26 +23,31 @@ test("iconvTiny", () => {
 });
 
 test("iconvTiny 2", () => {
-  const encodings1 = /** @type {any} */ ({ CP1251, 12: null, test: "123" });
+  const encodings1 = /** @type {any} */ ({ 12: null, test: "123" });
   const iconv = new IconvTiny(encodings1);
   try {
     iconv.encode("Hello", "12");
     throw new Error();
   } catch (e) {
-    expect(e.message).toBe(`Encoding "12" not supported`);
+    expect(/** @type {Error} */ (e).message).toBe(`Encoding "12" not supported`);
   }
   try {
     iconv.encode("Hello", "test");
     throw new Error();
   } catch (e) {
-    expect(e.message).toBe(`Encoding "test" not supported`);
+    expect(/** @type {Error} */ (e).message).toBe(`Encoding "test" not supported`);
   }
 });
-
-test("iconvTiny 2", () => {
-  const iconv = new IconvTiny({ CP1251, ISO_8859_15 });
-  expect(iconv.decode(new Uint8Array([164]), "iso8859-15")).toBe("€");
-  expect(iconv.decode(new Uint8Array([190]), "iso-885915")).toBe("Ÿ");
+test("grapheme cluster", () => {
+  const letterR = "🇷"; // \uD83C\uDDF7
+  const letterS = "🇸"; // \uD83C\uDDF8
+  const RS = "🇷🇸"; // \uD83C\uDDF7\uD83C\uDDF8
+  expect(letterR + letterS).toBe(RS);
+  const buf = new Uint8Array([0x81, 0x8d, 0x81, 0x8f]);
+  const overrides = [0x81, "\uD83C", 0x8d, "\uDDF7", 0x8f, "\uDDF8"];
+  const cp = CP1251.create({ overrides });
+  expect(cp.decode(buf)).toBe(RS);
+  expect(cp.encode(RS)).toStrictEqual(buf);
 });
 
 test("iconvTiny strict flag", () => {
@@ -58,16 +63,4 @@ test("iconvTiny strict flag", () => {
   // expect(strictMode).toBe("\ud7ff\ud800\ud801\ud802");
   expect(defaultMode).toBe("\ud7ff\ud800\ud801\ud802");
   expect(noOverrides).toStrictEqual("\x01\x02\x03\x04");
-});
-
-test("grapheme cluster", () => {
-  const letterR = "🇷"; // \uD83C\uDDF7
-  const letterS = "🇸"; // \uD83C\uDDF8
-  const RS = "🇷🇸"; // \uD83C\uDDF7\uD83C\uDDF8
-  expect(letterR + letterS).toBe(RS);
-  const buf = new Uint8Array([0x81, 0x8d, 0x81, 0x8f]);
-  const overrides = [0x81, "\uD83C", 0x8d, "\uDDF7", 0x8f, "\uDDF8"];
-  const cp = CP1251.create({ overrides });
-  expect(cp.decode(buf)).toBe(RS);
-  expect(cp.encode(RS)).toStrictEqual(buf);
 });

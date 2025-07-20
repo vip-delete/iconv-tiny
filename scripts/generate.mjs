@@ -6,24 +6,19 @@ import config from "./config.json" with { type: "json" };
 
 /**
  * @typedef {{
- *   key: number,
- *   value: number,
- *   comment: string,
- * }} Mapping
+ *   path: string,
+ *   name: string,
+ *   ascii?: boolean,
+ *   ids: !Array<string>,
+ * }} EncodingConfig
  */
 
 /**
  * @typedef {{
  *   name: string,
  *   aliases: string,
+ *   cfg?: EncodingConfig,
  * }} Encoding
- */
-
-/**
- * @typedef {{
- *   mjs: !Array<string>,
- *   mts: !Array<string>,
- * }} FileContent
  */
 
 /**
@@ -43,14 +38,14 @@ const assert = (condition, msg) => {
 const STRING_ESCAPE_MAPPINGS = [
   ["\\", "\\\\"],
   ["\x22", "\\\x22"], // QUOTATION MARK
-  ["\t", "\\t"],
+  ["\x07", "\\x07"],
+  ["\x1B", "\\x1B"],
+  ["\b", "\\b"],
   ["\n", "\\n"],
   ["\v", "\\v"], // 0x0B Vertical Tab
   ["\f", "\\f"], // 0x0C Form Feed
   ["\r", "\\r"],
-  ["\xA0", "\\xA0"], // NBSP
   ["\x00", "\\x00"], // NULL
-  ["\x7F", "\\x7F"], // DELETE
 ];
 
 /**
@@ -66,78 +61,48 @@ const escape = (str) => {
 };
 
 /**
- * @param {?number} num
- * @param {number} pad
+ * @param {number} num
  * @returns {string}
  */
-const hex = (num, pad) => {
-  if (num === null) {
-    return "<EMPTY>";
-  }
-  return `0x${num.toString(16).toUpperCase().padStart(pad, "0")}`;
-};
-
-/**
- * @param {!Mapping} mapping
- * @returns {string}
- */
-const getMappingStr = (mapping) => `${hex(mapping.key, 2)} ${hex(mapping.value, 4)} #${mapping.comment}`;
-
-/**
- * @param {!Array<!Mapping>} mappings
- */
-const validate = (mappings) => {
-  const keys = new Set();
-  const values = new Set();
-  mappings.forEach((mapping) => {
-    const mappingStr = getMappingStr(mapping);
-    const { key, value, comment } = mapping;
-    assert(!keys.has(key), `Duplicate key "${hex(key, 2)}": ${mappingStr}`);
-    keys.add(key);
-    if (value === null) {
-      assert(comment.startsWith("UNDEFINED"), `Comment "#${comment}" must be "#UNDEFINED": ${mappingStr}`);
-    } else {
-      assert(!comment.startsWith("UNDEFINED"), `Comment "#${comment}" must not be "#UNDEFINED": ${mappingStr}`);
-      if (values.has(value)) {
-        console.warn(`Duplicate value "${hex(value, 4)}": ${mappingStr}`);
-      }
-      values.add(value);
-    }
-  });
-};
+const hex = (num) => `0x${num.toString(16).toUpperCase().padStart(4, "0")}`;
 
 /**
  * @param {string} content
- * @returns {!Array<!Mapping>}
+ * @returns {!Map<number, number>}
  */
 const parseMappings = (content) => {
+  /**
+   * @type {!Map<number, number>}
+   */
+  const mappings = new Map();
   const lines = content.split("\n");
-  return lines
-    .map((line) => {
-      const i = line.indexOf("#");
-      if (i === 0) {
-        return null;
-      }
-      const beforeHash = i === -1 ? line : line.substring(0, i).trim();
-      const comment = i === -1 ? "" : line.substring(i + 1).trim();
-      const parts = beforeHash.split(/\s+/u).filter(Boolean).map(Number).filter(Number.isFinite);
-      if (parts.length === 0) {
-        return null;
-      }
-      const key = parts[0];
-      assert(Number.isInteger(key), `Key "${key}" is not an integer: ${line}`);
-      assert(key >= 0 && key <= 0xff, `Key "${key}" is not in range [0...0xFF]: ${line}`);
-      const value = parts[1] ?? null;
-      if (value !== null) {
-        assert(value >= 0 && value <= 0xffff, `Value "${value}" is not in range [0...0xFFFF]: ${line}`);
-      }
-      return { key, value, comment };
-    })
-    .filter((it) => it !== null);
+  lines.forEach((line) => {
+    const i = line.indexOf("#");
+    if (i === 0) {
+      // ignore comments
+      return;
+    }
+    const beforeHash = i === -1 ? line : line.substring(0, i).trim();
+    const parts = beforeHash.split(/\s+/u).filter(Boolean).map(Number).filter(Number.isFinite);
+    if (!parts.length) {
+      // ignore empty lines
+      return;
+    }
+    const key = parts[0];
+    assert(Number.isInteger(key), `Key "${key}" is not an integer: ${line}`);
+    assert(key >= 0 && key <= 0xffff, `Key "${key}" is not in range [0...${hex(0xffff)}]: ${line}`);
+    assert(!mappings.has(key), `Duplicate key "${hex(key)}": ${line}`);
+    const value = parts[1] ?? null;
+    if (value !== null) {
+      assert(value >= 0 && value <= 0xffff, `Value "${value}" is not in range [0...0xFFFF]: ${line}`);
+    }
+    mappings.set(key, value);
+  });
+  return mappings;
 };
 
 /**
- * @param {!Array<!Mapping>} mappings
+ * @param {!Map<number, number>} mappings
  * @param {string} name
  */
 const applyOverrides = (mappings, name) => {
@@ -145,38 +110,65 @@ const applyOverrides = (mappings, name) => {
   if (existsSync(filename)) {
     const content = readFileSync(filename);
     const overrides = parseMappings(content);
-    validate(overrides);
-    mappings.forEach((mapping) => {
-      overrides.forEach((override) => {
-        if (mapping.key === override.key) {
-          console.log(`OVERRIDE: ${name} (${hex(mapping.key, 2)}): (${hex(mapping.value, 4)}, ${mapping.comment}) -> (${hex(override.value, 4)}, ${override.comment})`);
-          mapping.value = override.value;
-          mapping.comment = override.comment;
-        }
-      });
-    });
+    for (const [key, value] of overrides) {
+      const oldValue = mappings.get(key) ?? null;
+      const oldValueStr = oldValue === null ? "<NULL>" : hex(oldValue);
+      const newValueStr = value === null ? "<NULL>" : hex(value);
+      console.log(`OVERRIDE ${name.padEnd(6, " ")} Key = ${hex(key)}: ${oldValueStr} -> ${newValueStr}`);
+      mappings.set(key, value);
+    }
   }
 };
 
 /**
- * @param {string} name
- * @param {string} content
- * @returns {!Uint16Array}
+ * @param {!EncodingConfig} cfg
+ * @param {string} row
+ * @param {!Array<() => Promise<void>>} tasks
+ * @returns {!Encoding}
  */
-const createB2C = (name, content) => {
-  const mappings = parseMappings(content);
-  applyOverrides(mappings, name);
-  validate(mappings);
-  const b2c = new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
-  for (let i = 0; i < 128; i++) {
-    b2c[i] = i;
+const fetchEncoding = (cfg, row, tasks) => {
+  const i = row.indexOf(" ");
+  const id = i < 0 ? row : row.slice(0, i);
+  const aliases = i < 0 ? "" : row.slice(i + 1);
+  const name = cfg.name.replaceAll("{ID}", id);
+  const filename = `temp/${name}.TXT`;
+  // fetch the file if it doesn't exist
+  if (!existsSync(filename)) {
+    const url = `${config.baseUrl}/${cfg.path.replaceAll("{ID}", id)}`;
+    tasks.push(async () => {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Fetch from "${url}" failed: ${response.status}\n${errorText}`);
+      }
+      const content = await response.arrayBuffer();
+      writeFileSync(filename, new Uint8Array(content));
+    });
   }
-  mappings.forEach(({ key, value }) => {
-    if (value !== null) {
-      b2c[key] = value;
+  return { name, aliases, cfg };
+};
+
+/**
+ * @param {!Array<!EncodingConfig>} encodingConfigs
+ * @returns {!Promise<!Array<!Encoding>>}
+ */
+const fetchEncodings = async (encodingConfigs) => {
+  /**
+   * @type {!Array<!Encoding>}
+   */
+  const encodings = [];
+
+  /**
+   * @type {!Array<() => Promise<void>>}
+   */
+  const tasks = [];
+  for (const cfg of encodingConfigs) {
+    for (const row of cfg.ids) {
+      encodings.push(fetchEncoding(cfg, row, tasks));
     }
-  });
-  return b2c;
+  }
+  await Promise.all(tasks.map((task) => task()));
+  return encodings;
 };
 
 /**
@@ -194,6 +186,10 @@ const getBestArgs = (b2c) => {
       overrides.push(escape(String.fromCharCode(i)));
       overrides.push(escape(String.fromCharCode(ch)));
     }
+    if (overrides.length >= 20) {
+      // too many overrides are bad for gzip
+      break;
+    }
     const overridesStr = overrides.length === 0 ? "" : `,"${overrides.join("")}"`;
     const args = `"${escape(String.fromCharCode(...b2c.subarray(i + 1)))}"${overridesStr}`;
     const bytesInUTF8 = encoder.encode(args).length;
@@ -206,60 +202,44 @@ const getBestArgs = (b2c) => {
 };
 
 /**
- * @returns {!Promise<Array<!Encoding>>}
+ * @param {!Array<string>} mjs
+ * @param {!Array<Encoding>} encodings
  */
-const fetchEncodings = async () => {
-  /**
-   * @type {!Array<!Encoding>}
-   */
-  const encodings = [];
-
-  // fetch all missing files
-  const tasks = [];
-  for (const cfg of config.encodings.sbcs) {
-    for (const row of cfg.ids) {
-      const i = row.indexOf(" ");
-      const id = i < 0 ? row : row.slice(0, i);
-      const aliases = i < 0 ? "" : row.slice(i + 1);
-      const name = cfg.name.replaceAll("{ID}", id);
-      const filename = `temp/${name}.TXT`;
-      encodings.push({ name, aliases });
-      // fetch the file if it doesn't exist
-      if (!existsSync(filename)) {
-        const url = `${config.baseUrl}/${cfg.path.replaceAll("{ID}", id)}`;
-        tasks.push(async () => {
-          const response = await fetch(url);
-          const content = await response.text();
-          if (!response.ok) {
-            throw new Error(`Fetch from "${url}" failed: ${response.status}\n${content}`);
-          }
-          writeFileSync(filename, content);
-        });
-      }
-    }
-  }
-  await Promise.all(tasks);
-  return encodings;
-};
-
-/**
- * @param {!Array<!Encoding>} encodings
- */
-const generateBundle = (encodings) => {
-  const mjs = [];
-
-  for (const encoding of encodings) {
-    const { name } = encoding;
+const processSBCS = async (mjs, encodings) => {
+  const sbcs = await fetchEncodings(config.encodings.sbcs);
+  for (const encoding of sbcs) {
+    const { name, cfg } = encoding;
     const filename = `temp/${name}.TXT`;
     const content = readFileSync(filename);
-    const args = getBestArgs(createB2C(name, content));
+    const mappings = parseMappings(content);
+    applyOverrides(mappings, name);
+    const b2c = new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
+    if (cfg?.ascii) {
+      // some encodings don't have ascii mappings but imply
+      for (let i = 0; i < 128; i++) {
+        b2c[i] = i;
+      }
+    }
+    for (const [key, value] of mappings) {
+      if (value !== null) {
+        b2c[key] = value;
+      }
+    }
+    const args = getBestArgs(b2c);
     mjs.push(`${getIdentifier(name)}=new SBCS("${name}",${args})`);
+    encodings.push(encoding);
   }
 
   // add ASCII
   mjs.push(`US_ASCII=new SBCS("US-ASCII","�".repeat(128))`);
   encodings.push({ name: "US-ASCII", aliases: "iso-ir-6 ANSI_X3.4 ISO_646.irv ASCII ISO646-US us IBM367 cp367 csASCII default 646 iso_646.irv ANSI_X3.4 ascii7" });
+};
 
+/**
+ * @param {!Array<string>} mjs
+ * @param {!Array<Encoding>} encodings
+ */
+const processUnicode = (mjs, encodings) => {
   // add Unicode
   mjs.push(`UTF8=new Unicode(2,2)`);
   mjs.push(`UTF16LE=new Unicode(0,0)`);
@@ -271,7 +251,15 @@ const generateBundle = (encodings) => {
   encodings.push({ name: "UTF16BE", aliases: "" });
   encodings.push({ name: "UTF32LE", aliases: "UTF32" });
   encodings.push({ name: "UTF32BE", aliases: "" });
+};
 
+/**
+ * @param {!Array<string>} ids
+ */
+const generateMTS = (ids) => {
+  /**
+   * @type {!Array<string>}
+   */
   const mts = [];
   const lines = readFileSync("src/global.d.ts").split(/\r\n|\n/u);
   for (const line of lines) {
@@ -282,20 +270,22 @@ const generateBundle = (encodings) => {
     }
   }
 
-  /**
-   * @type {!Array<string>}
-   */
-  const ids = [];
-  for (const encoding of encodings) {
-    const id = getIdentifier(encoding.name);
-    ids.push(id);
+  for (const id of ids) {
     mts.push(`export const ${id}: EncodingFactory;`);
   }
 
-  mjs.push(`encodings={${ids.join(",")}}`);
   mts.push(`\nexport const encodings: { [key: string]: EncodingFactory };`);
+  mts.push(`export const aliases: string;`);
 
-  // generate aliases
+  const mtsContent = mts.join("\n") + "\n";
+  writeFileSync("dist/iconv-tiny.d.mts", mtsContent);
+};
+
+/**
+ * @param {!Array<Encoding>} encodings
+ * @returns {string}
+ */
+const generateAliases = (encodings) => {
   const list = [];
   const used = new Set();
   for (const encoding of encodings) {
@@ -311,13 +301,15 @@ const generateBundle = (encodings) => {
     arr.unshift(name);
     list.push(arr.join(" "));
   }
-  mjs.push(`aliases="${list.join(",")}"`);
-  mts.push(`export const aliases: string;`);
+  return list.join(",");
+};
 
+/**
+ * @param {!Array<string>} mjs
+ */
+const writeBundle = (mjs) => {
   // generate esm bundle
   const mjsContent = "export const\n" + mjs.join(",\n") + ";\n";
-  const mtsContent = mts.join("\n") + "\n";
-  writeFileSync("dist/iconv-tiny.d.mts", mtsContent);
 
   const banner = getBanner();
 
@@ -328,7 +320,7 @@ const generateBundle = (encodings) => {
 
   // bundle with the Source Code to debug and test coverage
   const exports = getExports("src/index.mjs");
-  const sc = `import ${exports} from "../src/index.mjs";\n//import ${exports} from "./cc.mjs";\nexport ${exports};\n`;
+  const sc = `import ${exports} from "../src/index.mjs";\n// import ${exports} from "./cc.mjs";\nexport ${exports};\n`;
   writeFileSync("dist/main.mjs", sc + mjsContent);
 
   // esbuild
@@ -342,7 +334,39 @@ const generateBundle = (encodings) => {
   });
 };
 
+const generateBundle = async () => {
+  /**
+   * @type {!Array<string>}
+   */
+  const mjs = [];
+
+  /**
+   * @type {!Array<!Encoding>}
+   */
+  const encodings = [];
+
+  await processSBCS(mjs, encodings);
+  // await processDBCS(mjs, encodings);
+  processUnicode(mjs, encodings);
+
+  /**
+   * @type {!Array<string>}
+   */
+  const ids = [];
+  for (const encoding of encodings) {
+    const id = getIdentifier(encoding.name);
+    ids.push(id);
+  }
+
+  generateMTS(ids);
+
+  mjs.push(`encodings={${ids.join(",")}}`);
+  mjs.push(`aliases="${generateAliases(encodings)}"`);
+
+  writeBundle(mjs);
+};
+
 // main
 mkdirSync("dist");
 mkdirSync("temp");
-generateBundle(await fetchEncodings());
+await generateBundle();

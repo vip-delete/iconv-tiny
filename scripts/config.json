@@ -98,8 +98,18 @@
       {
         "path": "/VENDORS/NEXT/{ID}.TXT",
         "name": "{ID}",
+        "ascii": true,
         "ids": [
           "NEXTSTEP WE8NEXTSTEP"
+        ]
+      }
+    ],
+    "dbcs": [
+      {
+        "path": "/VENDORS/MICSFT/WINDOWS/CP{ID}.TXT",
+        "name": "CP{ID}",
+        "ids": [
+          "932 win932 windows-932 cp932 ms932 windows-31j"
         ]
       }
     ]
