@@ -1,5 +1,5 @@
 {
-  "baseUrl": "http://www.unicode.org/Public/MAPPINGS",
+  "baseUrl": "https://www.unicode.org/Public/MAPPINGS",
   "encodings": {
     "sbcs": [
       {
