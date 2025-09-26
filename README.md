@@ -122,7 +122,7 @@ All encodings are generated automatically from http://www.unicode.org/Public/MAP
 Comparison with iconv-lite module (Core i7-7500U CPU @ 2.7GHz, Node v24.2.0). Note: your results may vary, so please always check on your hardware.
 
 ```
-operation          iconv-lite@0.6.3   iconv-tiny@1.2.2
+operation          iconv-lite@0.7.0   iconv-tiny@1.2.3
 ------------------------------------------------------
 encode('win1251')     ~598 Mb/s          ~622 Mb/s
 decode('win1251')     ~218 Mb/s          ~263 Mb/s
