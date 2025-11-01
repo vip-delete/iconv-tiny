@@ -45,7 +45,7 @@
     "@types/express": "^5.x",
     "@types/google-closure-compiler": "^20231112.0.0",
     "@types/node": "^24.x",
-    "@types/serve-static": "^1.x",
+    "@types/serve-static": "^2.x",
     "@vitest/coverage-istanbul": "^3.x",
     "@vue/runtime-dom": "^3.5.22",
     "esbuild": "^0.25.x",
