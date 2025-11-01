@@ -50,7 +50,7 @@
     "@vue/runtime-dom": "^3.5.22",
     "esbuild": "^0.25.x",
     "eslint": "^9.x",
-    "eslint-plugin-jsdoc": "^60.x",
+    "eslint-plugin-jsdoc": "^61.x",
     "express": "^5.x",
     "google-closure-compiler": "^20250924.0.0",
     "iconv-lite": "^0.7.0",
