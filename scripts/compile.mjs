@@ -18,6 +18,7 @@ const compile = async (name, outputWrapper, outputFile, files) => {
     assume_function_wrapper: true,
     output_wrapper: outputWrapper,
     summary_detail_level: String(3),
+    language_in: "ES_NEXT",
     use_types_for_optimization: true,
     define: [],
     js_output_file: abs(outputFile),
@@ -51,17 +52,27 @@ const compile = async (name, outputWrapper, outputFile, files) => {
   console.log(`\x1b[33m${name.toUpperCase()}\x1b[0m: \x1b[92mBUILD SUCCESSFUL\x1b[0m: ${outputFile}\n`);
 };
 
-const exports = getExports("src/index.mjs");
+/**
+ * @param {string} it
+ * @returns {boolean}
+ */
+const functionFilter = (it) => it.charAt(0) !== it.charAt(0).toUpperCase();
 
-writeFileSync("./dist/exports.mjs", `import ${exports} from "../src/index.mjs";\nns = ${exports};\n`);
-const outputWrapper = `let ns;\n%output%\nexport const ${exports}=ns;\n`;
+const exports = getExports("src/index.mjs");
+writeFileSync("./dist/exports.mjs", `import { ${exports.join(", ")} } from "../src/index.mjs";\n${exports.map((it) => `ns.${it} = ${it};\n`).join("")}`);
+
+// re-export functions only
+const outputWrapper = `const ns = {};\n%output%\nexport const { ${exports.filter(functionFilter).join(", ")} } = ns;\nconst { ${exports.filter((it) => !functionFilter(it)).join(", ")} } = ns;\n`;
 
 await compile("app", outputWrapper, "dist/cc.mjs", [
   "src/externs.mjs",
+  "src/types.mjs",
   "src/commons.mjs",
-  "src/sbcs.mjs",
-  "src/unicode.mjs",
   "src/iconv-tiny.mjs",
+  "src/mapped.mjs",
+  "src/unicode.mjs",
+  "src/sbcs.mjs",
+  "src/dbcs.mjs",
   "src/index.mjs",
   "dist/exports.mjs",
 ]);

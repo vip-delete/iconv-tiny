@@ -1,7 +1,7 @@
-import { IconvTiny, aliases, encodings } from "iconv-tiny";
+import { createIconv, aliases, encodings } from "iconv-tiny";
 import { computed, createApp, onBeforeUnmount, onMounted, ref } from "vue";
 
-const iconv = new IconvTiny(encodings, aliases);
+const iconv = createIconv(encodings, aliases);
 
 /**
  * @param {!Uint8Array} bytes
@@ -11,7 +11,7 @@ const toHexDump = (bytes) => Array.from(bytes, (it) => it.toString(16).padStart(
 
 /**
  * @param {string} hex
- * @returns {!Uint8Array}
+ * @returns {!Uint8Array<ArrayBuffer>}
  */
 const fromHexDump = (hex) => {
   const str = hex.replace(/[^0-9a-fA-F]/gu, "").toLowerCase();
@@ -23,7 +23,7 @@ const fromHexDump = (hex) => {
 };
 
 /**
- * @param {!Uint8Array} bytes
+ * @param {!Uint8Array<ArrayBuffer>} bytes
  * @param {string} filename
  */
 const downloadFile = (bytes, filename) => {
@@ -39,7 +39,6 @@ const downloadFile = (bytes, filename) => {
 };
 
 const App = {
-  // eslint-disable-next-line max-lines-per-function
   setup() {
     const encodingNames = aliases.split(",").map((it) => it.split(" ")[0]);
     const encoding = ref("CP437");
@@ -98,10 +97,7 @@ const App = {
      * @param {Event} e
      */
     const copyText = (e) => {
-      /**
-       * @type {*}
-       */
-      const btn = e.target;
+      const btn = /** @type {!HTMLElement} */ (e.target);
       if (!originText.value) {
         originText.value = btn.innerText;
       }

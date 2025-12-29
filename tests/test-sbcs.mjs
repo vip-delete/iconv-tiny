@@ -1,5 +1,5 @@
 import iconvLite from "iconv-lite";
-import { CP1006, CP1251, CP1252, CP1255, CP424, CP437, CP864, CP875, IconvTiny, ISO_8859_15, ISO_8859_8, US_ASCII } from "iconv-tiny";
+import { CP1006, CP1251, CP1252, CP1255, CP424, CP437, CP864, CP875, createIconv, ISO_8859_15, ISO_8859_8, NEXTSTEP, US_ASCII } from "iconv-tiny";
 import { expect, test } from "vitest";
 import { DEFAULT_CHAR_BYTE, REPLACEMENT_CHARACTER_CODE } from "../src/commons.mjs";
 
@@ -253,7 +253,7 @@ test("ISO-8859-8: iconv-lite comparison", () => {
 });
 
 test("ISO-8859-15", () => {
-  const iconv = new IconvTiny({ CP1251, ISO_8859_15 });
+  const iconv = createIconv({ CP1251, ISO_8859_15 });
   expect(iconv.decode(new Uint8Array([164]), "iso8859-15")).toBe("€");
   expect(iconv.decode(new Uint8Array([190]), "iso-885915")).toBe("Ÿ");
 });
@@ -275,4 +275,12 @@ test("US-ASCII", () => {
   expect(new TextDecoder("US-ASCII").decode(buf)).toBe(`ABCå`);
   // however iconv-lite also maps a 0x80-0xFF to "�"
   expect(iconvLite.decode(Buffer.from(buf), "US-ASCII")).toBe(`ABC${str}`);
+});
+
+test("NEXTSTEP", () => {
+  const iconv = createIconv({ NEXTSTEP });
+  expect(iconv.decode(new Uint8Array([0xfe]), "NEXTSTEP", { defaultCharUnicode: "1" })).toBe("1");
+  expect(iconv.decode(new Uint8Array([0xfe]), "NEXTSTEP", { defaultCharUnicode: "2" })).toBe("2");
+  expect(iconv.decode(new Uint8Array([0xff]), "NEXTSTEP", { defaultCharUnicode: "3" })).toBe("3");
+  expect(iconv.decode(new Uint8Array([0xff]), "NEXTSTEP", { defaultCharUnicode: "4" })).toBe("4");
 });

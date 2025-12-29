@@ -2,7 +2,7 @@
  * @file Encoding API for Closure Compiler.
  * @externs
  */
-let ns = {
+const ns = {
   /**
    * @interface
    */
@@ -38,6 +38,13 @@ let ns = {
   canonicalize(encoding) {},
 
   /**
+   * @param {!Object<string, !ns.EncodingFactory>} [encodings]
+   * @param {string} [aliases]
+   * @return {!ns.IconvTiny}
+   */
+  createIconv(encodings, aliases) {},
+
+  /**
    * @interface
    */
   Encoding: class {
@@ -48,26 +55,26 @@ let ns = {
 
     /**
      * @param {!Uint8Array} array
-     * @param {ns.DecoderOptions} [options]
+     * @param {!ns.DecoderOptions} [options]
      * @return {string}
      */
     decode(array, options) {}
 
     /**
      * @param {string} text
-     * @param {ns.EncoderOptions} [options]
+     * @param {!ns.EncoderOptions} [options]
      * @return {!Uint8Array}
      */
     encode(text, options) {}
 
     /**
-     * @param {ns.DecoderOptions} [options]
+     * @param {!ns.DecoderOptions} [options]
      * @return {!ns.CharsetDecoder}
      */
     newDecoder(options) {}
 
     /**
-     * @param {ns.EncoderOptions} [options]
+     * @param {!ns.EncoderOptions} [options]
      * @return {!ns.CharsetEncoder}
      */
     newEncoder(options) {}
@@ -106,17 +113,17 @@ let ns = {
     encode(text) {}
 
     /**
-     * @param {string} src
+     * @param {string} text
      * @param {!Uint8Array} dst
      * @return {!ns.TextEncoderEncodeIntoResult}
      */
-    encodeInto(src, dst) {}
+    encodeInto(text, dst) {}
 
     /**
-     * @param {string} src
+     * @param {string} text
      * @return {number}
      */
-    byteLength(src) {}
+    byteLength(text) {}
   },
 };
 
@@ -130,17 +137,17 @@ ns.TextEncoderEncodeIntoResult;
 
 /**
  * @typedef {{
- *            defaultCharUnicode: (string|ns.DefaultCharUnicodeFunction),
- *            native: boolean,
- *            stripBOM: boolean,
+ *            defaultCharUnicode: (!ns.DefaultFunction|string|undefined),
+ *            native: (boolean|undefined),
+ *            stripBOM: (boolean|undefined),
  *          }}
  */
 ns.DecoderOptions;
 
 /**
  * @typedef {{
- *            defaultCharByte: (string|ns.DefaultCharByteFunction),
- *            addBOM: boolean,
+ *            defaultCharByte: (!ns.DefaultFunction|string|undefined),
+ *            addBOM: (boolean|undefined),
  *          }}
  */
 ns.EncoderOptions;
@@ -160,19 +167,14 @@ ns.Overrides;
 /**
  * @typedef {function(number,number):?number}
  */
-ns.DefaultCharByteFunction;
-
-/**
- * @typedef {function(number,number):?number}
- */
-ns.DefaultCharUnicodeFunction;
+ns.DefaultFunction;
 
 /**
  * ns.Options & ns.DecoderOptions
  *
  * @typedef {{
  *            overrides: !ns.Overrides,
- *            defaultCharUnicode: (string|ns.DefaultCharUnicodeFunction),
+ *            defaultCharUnicode: (!ns.DefaultFunction|string),
  *            native: boolean,
  *            stripBOM: boolean,
  *          }}
@@ -184,7 +186,7 @@ ns.OptionsAndDecoderOptions;
  *
  * @typedef {{
  *            overrides: !ns.Overrides,
- *            defaultCharByte: (string|ns.DefaultCharByteFunction),
+ *            defaultCharByte: (!ns.DefaultFunction|string),
  *            addBOM: boolean,
  *          }}
  */

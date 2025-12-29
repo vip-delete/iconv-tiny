@@ -46,7 +46,7 @@ try {
     },
   });
 } catch (e) {
-  console.error(e.message); // Can't encode '⭐' at position 5
+  console.error(e); // Can't encode '⭐' at position 5
 }
 
 // JS strings use UTF-16, and Unicode characters with codes greater than U+FFFF

@@ -4,11 +4,13 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Vitest",
+      "name": "Vitest",
       "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
-      "args": ["run", "--pool=threads", "--poolOptions.threads.singleThread", "--testTimeout=0", "main.test.mjs"],
+      "args": ["run", "--no-file-parallelism", "--testTimeout=0", "main.test.mjs"],
       "autoAttachChildProcesses": true,
       "console": "integratedTerminal"
-    }
+    },
+    { "type": "node", "request": "launch", "name": "Generate", "program": "./scripts/generate.mjs", "console": "integratedTerminal" },
+    { "type": "node", "request": "launch", "name": "shift-jis.mjs", "program": "./examples/shift-jis.mjs", "console": "integratedTerminal" }
   ]
 }

@@ -1,5 +1,5 @@
 import iconvLite from "iconv-lite";
-import { IconvTiny, encodings } from "iconv-tiny";
+import { createIconv, encodings } from "iconv-tiny";
 import { assert, expect, test } from "vitest";
 import { DEFAULT_CHAR_BYTE } from "../src/commons.mjs";
 import { ALL_SYMBOLS } from "./common.mjs";
@@ -26,7 +26,7 @@ const compareStr = (name, actualStr, expectedStr) => {
 
 /**
  * @param {!Array<string>} encodingsList
- * @param {IconvTiny} iconvTiny
+ * @param {!import("iconv-tiny").IconvTiny} iconvTiny
  */
 export const regressionTest = (encodingsList, iconvTiny) => {
   const buffer = new Uint8Array(256);
@@ -40,8 +40,17 @@ export const regressionTest = (encodingsList, iconvTiny) => {
   const missing = encodingsList.filter((it) => !iconvLite.encodingExists(it));
   console.warn(`Missing encodings in iconv-lite: ${missing}`);
 
+  const unicode = ["UTF8", "UTF16LE", "UTF16BE", "UTF32LE", "UTF32BE"];
+  const dbcs = ["SHIFT_JIS", "CP932"];
+
+  /**
+   * @param {string} it
+   * @returns {boolean}
+   */
+  const sbcsFilter = (it) => !unicode.includes(it) && !dbcs.includes(it);
+
   const supported = encodingsList.filter(iconvLite.encodingExists);
-  const list = supported.filter((it) => !it.startsWith("UTF") && !it.includes("932"));
+  const list = supported.filter(sbcsFilter);
   for (const name of list) {
     test(`Regression ${name} (decode)`, () => {
       const expected = iconvLite.decode(Buffer.from(buffer), name);
@@ -72,7 +81,7 @@ export const regressionTest = (encodingsList, iconvTiny) => {
   }
 
   // Unicode regression
-  for (const name of ["UTF8", "UTF16LE", "UTF16BE", "UTF32LE", "UTF32BE"]) {
+  for (const name of unicode) {
     test(`Regression ${name} (encode)`, () => {
       // addBOM: false (default)
       const expectedArr = new Uint8Array(iconvLite.encode(ALL_SYMBOLS, name));
@@ -129,4 +138,4 @@ export const regressionTest = (encodingsList, iconvTiny) => {
   }
 };
 
-regressionTest(Object.keys(encodings), new IconvTiny(encodings));
+regressionTest(Object.keys(encodings), createIconv(encodings));

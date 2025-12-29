@@ -1,3 +1,4 @@
+import iconvLite from "iconv-lite";
 import { UTF16BE, UTF16LE, UTF32BE, UTF32LE, UTF8 } from "iconv-tiny";
 import { expect, test } from "vitest";
 
@@ -148,6 +149,31 @@ test("UTF-8 incomplete", () => {
   const dec = utf8.newDecoder();
   expect(dec.decode(new Uint8Array([0xd0]))).toBe("");
   expect(dec.decode()).toBe("�"); // incomplete
+});
+
+test("UTF-8 chunked encode", () => {
+  const enc1 = iconvLite.getEncoder("UTF-8");
+  const a1 = new Uint8Array(enc1.write("😀".slice(0, 1)));
+  const b1 = new Uint8Array(enc1.write("😀".slice(1, 2)));
+  const expected = new TextEncoder().encode("😀");
+
+  expect(a1).toStrictEqual(new Uint8Array([])); // high surrogate
+  expect(b1).toStrictEqual(expected);
+
+  const utf8 = UTF8.create();
+  const enc = utf8.newEncoder();
+  const buf = new Uint8Array(4);
+  const a2 = enc.encodeInto("😀".slice(0, 1), buf);
+  expect(a2).toStrictEqual({ read: 1, written: 0 }); // high surrogate
+  const b2 = enc.encodeInto("😀".slice(1, 2), buf);
+  expect(b2).toStrictEqual({ read: 2, written: expected.length });
+  expect(buf).toStrictEqual(expected);
+
+  const enc3 = utf8.newEncoder();
+  const a3 = enc3.encode("😀".slice(0, 1));
+  expect(a3).toStrictEqual(new Uint8Array([])); // high surrogate
+  const b3 = enc3.encode("😀".slice(1, 2));
+  expect(b3).toStrictEqual(expected);
 });
 
 test("UTF-16", () => {

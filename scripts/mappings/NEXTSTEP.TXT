@@ -1,0 +1,6 @@
+#
+# Unicode maps 0xFE and 0xFF to 0xFFFD which actually means UNDEFINED
+#
+
+0xfe  # UNDEFINED
+0xff  # UNDEFINED

@@ -1,15 +1,27 @@
-import { Charset, CharsetEncoderBase, NativeCharsetDecoder, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
+import { byteLengthDefault, createEncoding, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
+import { ByteLengthFn, CreateDecodeStateFn, CreateEncodeStateFn, DecodeFn, DecoderOperations, EncodeIntoFn, EncoderOperations } from "./types.mjs";
 
+const MAX_BPM = 0xffff;
+const MAX_CODE_POINT = 0x10ffff;
 const BOM_CHAR = "\ufeff";
 const STRIP_BOM_DEFAULT = true;
 const ADD_BOM_DEFAULT = false;
 
+const HIGH_SURROGATE_FROM = 0xd800; // 0xD800 <= high <= 0xDBFF
+const LOW_SURROGATE_FROM = 0xdc00; // 0xDC00 <= low <= 0xDFFF
+
 /**
- * @param {string} src
- * @param {number} i
- * @param {!Uint8Array} dst
- * @param {number} j
- * @return {number}
+ * @typedef {function(string,number,!Uint8Array,number):number}
+ */
+const PutFn = {};
+
+/**
+ * @typedef {function(!Uint8Array,number):number}
+ */
+const Get32Fn = {};
+
+/**
+ * @type {!PutFn}
  */
 const put16LE = (src, i, dst, j) => {
   const cp = src.charCodeAt(i);
@@ -19,11 +31,7 @@ const put16LE = (src, i, dst, j) => {
 };
 
 /**
- * @param {string} src
- * @param {number} i
- * @param {!Uint8Array} dst
- * @param {number} j
- * @return {number}
+ * @type {!PutFn}
  */
 const put16BE = (src, i, dst, j) => {
   const cp = src.charCodeAt(i);
@@ -33,11 +41,7 @@ const put16BE = (src, i, dst, j) => {
 };
 
 /**
- * @param {string} src
- * @param {number} i
- * @param {!Uint8Array} dst
- * @param {number} j
- * @return {number}
+ * @type {!PutFn}
  */
 const put32LE = (src, i, dst, j) => {
   const cp = /** @type {number} */ (src.codePointAt(i));
@@ -49,11 +53,7 @@ const put32LE = (src, i, dst, j) => {
 };
 
 /**
- * @param {string} src
- * @param {number} i
- * @param {!Uint8Array} dst
- * @param {number} j
- * @return {number}
+ * @type {!PutFn}
  */
 const put32BE = (src, i, dst, j) => {
   const cp = /** @type {number} */ (src.codePointAt(i));
@@ -65,16 +65,12 @@ const put32BE = (src, i, dst, j) => {
 };
 
 /**
- * @param {!Uint8Array} src
- * @param {number} i
- * @return {number}
+ * @type {!Get32Fn}
  */
 const get32LE = (src, i) => (src[i] | (src[i + 1] << 8) | (src[i + 2] << 16) | (src[i + 3] << 24)) >>> 0;
 
 /**
- * @param {!Uint8Array} src
- * @param {number} i
- * @return {number}
+ * @type {!Get32Fn}
  */
 const get32BE = (src, i) => ((src[i] << 24) | (src[i + 1] << 16) | (src[i + 2] << 8) | src[i + 3]) >>> 0;
 
@@ -86,303 +82,401 @@ const get32BE = (src, i) => ((src[i] << 24) | (src[i + 1] << 16) | (src[i + 2] <
  * @return {number}
  */
 const appendCodePoint = (dst, j, cp) => {
-  if (cp > 0x10ffff) {
-    cp = REPLACEMENT_CHARACTER_CODE;
+  if (cp <= MAX_BPM) {
+    // hot path: 99%
+    dst[j] = cp;
+    dst[j + 1] = cp >> 8;
+    return 2;
   }
-  if (cp > 0xffff) {
-    cp -= 0x10000;
-    const high = 0xd800 | (cp >> 10);
-    const low = 0xdc00 | (cp & 0x3ff);
-    dst[j] = high;
-    dst[j + 1] = high >> 8;
-    dst[j + 2] = low;
-    dst[j + 3] = low >> 8;
-    return 4;
+  if (cp > MAX_CODE_POINT) {
+    dst[j] = REPLACEMENT_CHARACTER_CODE;
+    dst[j + 1] = REPLACEMENT_CHARACTER_CODE >> 8;
+    return 2;
   }
-  dst[j] = cp;
-  dst[j + 1] = cp >> 8;
-  return 2;
+  // write surrogate pair
+  cp -= 0x10000;
+  const high = HIGH_SURROGATE_FROM | (cp >> 10);
+  const low = LOW_SURROGATE_FROM | (cp & 0x3ff);
+  dst[j] = high;
+  dst[j + 1] = high >> 8;
+  dst[j + 2] = low;
+  dst[j + 3] = low >> 8;
+  return 4;
 };
 
-// UTF-8
+// UTF-8 DECODE
 
 /**
- * @implements {ns.CharsetDecoder}
+ * @typedef {{
+ *  decoder: !TextDecoder,
+ * }}
  */
-class UTF8Decoder extends NativeCharsetDecoder {
-  /**
-   * @param {boolean} noBOM - stripBOM
-   */
-  constructor(noBOM) {
-    super(new TextDecoder("UTF-8", { ignoreBOM: noBOM }));
-  }
-}
+const DecodeStateUTF8 = {};
 
 /**
- * @implements {ns.CharsetEncoder}
+ * @type {!CreateDecodeStateFn}
  */
-class UTF8Encoder extends CharsetEncoderBase {
+const createDecodeStateUTF8 = (charsetCtx, options) => {
+  const noBOM = !(options.stripBOM ?? STRIP_BOM_DEFAULT);
   /**
-   * @param {boolean} doBOM
+   * @type {!DecodeStateUTF8}
    */
-  constructor(doBOM) {
-    super();
-    this.doBOM = doBOM;
-    this.appendBOM = doBOM;
-    this.encoder = new TextEncoder();
-  }
-
-  /**
-   * @override
-   * @param {string} src
-   * @param {!Uint8Array} dst
-   * @return {!ns.TextEncoderEncodeIntoResult}
-   */
-  // @ts-expect-error
-  encodeInto(src, dst) {
-    const { appendBOM } = this;
-    let j = 0;
-    if (appendBOM) {
-      if (dst.length < 3) {
-        return { read: 0, written: 0 };
-      }
-      dst[0] = 0xef;
-      dst[1] = 0xbb;
-      dst[2] = 0xbf;
-      j += 3;
-      this.appendBOM = false;
-    }
-    const { read, written } = this.encoder.encodeInto(src, dst.subarray(j));
-    return { read, written: written + j };
-  }
-
-  /**
-   * @override
-   * @param {string} src
-   * @return {number}
-   */
-  byteLengthMax(src) {
-    return (this.doBOM ? 4 : 0) + src.length * 4;
-  }
-
-  /**
-   * @override
-   */
-  reset() {
-    this.appendBOM = this.doBOM;
-  }
-}
+  const state = {
+    decoder: new TextDecoder("UTF-8", { ignoreBOM: noBOM }),
+  };
+  return state;
+};
 
 /**
- * UTF16/32 Encoder
- * @implements {ns.CharsetEncoder}
+ * @type {!DecodeFn}
  */
-class UnicodeEncoder extends CharsetEncoderBase {
-  /**
-   * @param {boolean} doBOM
-   * @param {number} i - 0 for UTF-16, 1 for UTF-32
-   * @param {number} bo - 0 for LE, 1 for BE
-   */
-  constructor(doBOM, i, bo) {
-    super();
-    this.doBOM = doBOM;
-    this.appendBOM = doBOM;
-    this.sz = 1 << (i + 1);
-    // eslint-disable-next-line no-nested-ternary
-    this.put = i ? (bo ? put32BE : put32LE) : bo ? put16BE : put16LE;
-  }
-
-  /**
-   * @override
-   * @param {string} src
-   * @param {!Uint8Array} dst
-   * @return {!ns.TextEncoderEncodeIntoResult}
-   */
-  // @ts-expect-error
-  encodeInto(src, dst) {
-    const { appendBOM, sz, put } = this;
-    let j = 0;
-    if (appendBOM) {
-      if (dst.length < sz) {
-        return { read: 0, written: 0 };
-      }
-      put(BOM_CHAR, 0, dst, j);
-      j += sz;
-      this.appendBOM = false;
-    }
-    const max = Math.min(src.length, (dst.length - j) & ~(sz - 1));
-    for (let i = 0; i < max; i++, j += sz) {
-      i += put(src, i, dst, j);
-    }
-    return { read: max, written: j };
-  }
-
-  /**
-   * @override
-   * @param {string} text
-   * @return {number}
-   */
-  byteLengthMax(text) {
-    return (this.doBOM ? this.sz : 0) + text.length * this.sz;
-  }
-
-  /**
-   * @override
-   * @param {string} text
-   * @return {number}
-   */
-  byteLength(text) {
-    if (this.sz === 4) {
-      // UTF-32: a surrogate pair (two UTF-16 code units) is one UTF-32 code unit (4 bytes)
-      return super.byteLength(text);
-    }
-    // UTF-16
-    return this.byteLengthMax(text);
-  }
-
-  /**
-   * @override
-   */
-  reset() {
-    this.appendBOM = this.doBOM;
-  }
-}
+const decodeUTF8 = (decodeState, input) => {
+  const state = /** @type {!DecodeStateUTF8} */ (decodeState);
+  return state.decoder.decode(input, { stream: Boolean(input) });
+};
 
 /**
- * @type {!Array<string>}
+ * @type {!DecoderOperations}
  */
-const POSTFIX = ["LE", "BE", ""];
-const NAMES = [16, 32, 8];
+const decoderOpUTF8 = {
+  createDecodeStateFn: createDecodeStateUTF8,
+  decodeFn: decodeUTF8,
+};
 
-// UTF-16
+// UTF-8 ENCODE
 
 /**
- * @implements {ns.CharsetDecoder}
+ * @typedef {{
+ *  doBOM: boolean,
+ *  appendBOM: boolean,
+ *  encoder: !TextEncoder,
+ *  highSurrogate: string,
+ * }}
  */
-export class UTF16Decoder extends NativeCharsetDecoder {
-  /**
-   * @param {boolean} noBOM
-   * @param {number} bo
-   */
-  constructor(noBOM, bo) {
-    super(new TextDecoder("UTF-16" + POSTFIX[bo], { ignoreBOM: noBOM }));
-  }
-}
-
-// UTF-32
+const EncodeStateUTF8 = {};
 
 /**
- * @implements {ns.CharsetDecoder}
+ * @type {!CreateEncodeStateFn}
  */
-class UTF32Decoder {
+const createEncodeStateUTF8 = (charsetCtx, options) => {
+  const doBOM = options.addBOM ?? ADD_BOM_DEFAULT;
   /**
-   * @param {boolean} noBOM
-   * @param {number} bo
+   * @type {!EncodeStateUTF8}
    */
-  constructor(noBOM, bo) {
-    this.noBOM = noBOM;
-    this.leftover = new Uint8Array(4);
-    this.leftoverSize = 0;
-    /**
-     * @private
-     * @constant
-     */
-    this.get32 = bo ? get32BE : get32LE;
+  const state = {
+    doBOM,
+    appendBOM: doBOM,
+    encoder: new TextEncoder(),
+    highSurrogate: "",
+  };
+  return state;
+};
+
+/**
+ * @type {!EncodeIntoFn}
+ */
+const encodeIntoUTF8 = (encodeState, src, dst) => {
+  const state = /** @type {!EncodeStateUTF8} */ (encodeState);
+  const { appendBOM } = state;
+  let j = 0;
+  if (appendBOM) {
+    if (dst.length < 3) {
+      return { read: 0, written: 0 };
+    }
+    dst[0] = 0xef;
+    dst[1] = 0xbb;
+    dst[2] = 0xbf;
+    j += 3;
+    state.appendBOM = false;
   }
 
+  if (state.highSurrogate) {
+    src = state.highSurrogate + src;
+    state.highSurrogate = "";
+  }
+
+  const len1 = src.length - 1;
+  if (src.length > 0) {
+    const code = src.charCodeAt(len1);
+    if (code >= HIGH_SURROGATE_FROM && code < LOW_SURROGATE_FROM) {
+      state.highSurrogate = src.charAt(len1);
+      src = src.slice(0, len1);
+    }
+  }
+
+  const { read, written } = state.encoder.encodeInto(src, dst.subarray(j));
+  return { read: read + (state.highSurrogate ? 1 : 0), written: written + j };
+};
+
+/**
+ * @type {!ByteLengthFn}
+ */
+const byteLengthMaxUTF8 = (encodeState, op, text) => {
+  const state = /** @type {!EncodeStateUTF8} */ (encodeState);
+  return (state.doBOM ? 4 : 0) + text.length * 4;
+};
+
+/**
+ * @type {!EncoderOperations}
+ */
+const encoderOpUTF8 = {
+  createEncodeStateFn: createEncodeStateUTF8,
+  encodeIntoFn: encodeIntoUTF8,
+  byteLengthMaxFn: byteLengthMaxUTF8,
+  byteLengthFn: byteLengthDefault,
+};
+
+// UTF-16 DECODE
+
+/**
+ * @typedef {{
+ *  decoder: !TextDecoder,
+ * }}
+ */
+const DecodeStateUTF16 = {};
+
+/**
+ * @type {!CreateDecodeStateFn}
+ */
+const createDecodeStateUTF16 = (charsetCtx, options) => {
+  const ctx = /** @type {!UnicodeCharsetContext} */ (charsetCtx);
+  const noBOM = !(options.stripBOM ?? STRIP_BOM_DEFAULT);
+  const { bo } = ctx;
   /**
-   * @override
-   * @param {!Uint8Array} [src]
-   * @return {string}
+   * @type {!DecodeStateUTF16}
    */
-  // @ts-expect-error
-  decode(src) {
-    if (!src) {
-      return this.leftoverSize ? String.fromCharCode(REPLACEMENT_CHARACTER_CODE) : "";
+  const state = {
+    decoder: new TextDecoder("UTF-16" + ["LE", "BE"][bo], { ignoreBOM: noBOM }),
+  };
+  return state;
+};
+
+/**
+ * @type {!DecodeFn}
+ */
+const decodeUTF16 = (decodeState, input) => {
+  const state = /** @type {!DecodeStateUTF16} */ (decodeState);
+  return state.decoder.decode(input, { stream: Boolean(input) });
+};
+
+/**
+ * @type {!DecoderOperations}
+ */
+const decoderOpUTF16 = {
+  createDecodeStateFn: createDecodeStateUTF16,
+  decodeFn: decodeUTF16,
+};
+
+// UTF-32 DECODE
+
+/**
+ * @typedef {{
+ *  leftover: !Uint8Array,
+ *  leftoverSize: number,
+ *  get32: !Get32Fn,
+ *  noBOM: boolean,
+ * }}
+ */
+const DecodeStateUTF32 = {};
+
+/**
+ * @type {!CreateDecodeStateFn}
+ */
+const createDecodeStateUTF32 = (charsetCtx, options) => {
+  const ctx = /** @type {!UnicodeCharsetContext} */ (charsetCtx);
+  /**
+   * @type {!DecodeStateUTF32}
+   */
+  const state = {
+    leftover: new Uint8Array(4),
+    leftoverSize: 0,
+    get32: ctx.bo ? get32BE : get32LE,
+    noBOM: !(options.stripBOM ?? STRIP_BOM_DEFAULT),
+  };
+  return state;
+};
+
+/**
+ * @type {!DecodeFn}
+ */
+const decodeUTF32 = (decodeState, input) => {
+  const state = /** @type {!DecodeStateUTF32} */ (decodeState);
+  const { leftover, get32, noBOM } = state;
+  if (!input) {
+    if (state.leftoverSize) {
+      state.leftoverSize = 0;
+      return String.fromCharCode(REPLACEMENT_CHARACTER_CODE);
     }
+    return "";
+  }
 
-    // each 4 bytes is a symbol, which can be written as 2 UTF-16 code units (4 bytes also) plus 4 bytes for leftover
-    const dst = new Uint8Array(src.length + 4);
+  // each 4 bytes is a symbol, which can be written as 2 UTF-16 code units (4 bytes also) plus 4 bytes for leftover
+  const dst = new Uint8Array(input.length + 4);
 
-    // "src" index
-    let i = 0;
+  // "src" index
+  let i = 0;
 
-    // "dst" index
-    let j = 0;
+  // "dst" index
+  let j = 0;
 
-    if (this.leftoverSize) {
-      while (this.leftoverSize < 4 && i < src.length) {
-        this.leftover[this.leftoverSize++] = src[i++];
-      }
-
-      if (this.leftoverSize < 4) {
-        // not enough bytes still
-        return "";
-      }
-
-      j += appendCodePoint(dst, j, this.get32(this.leftover, 0));
-    }
-
-    const max = src.length - 3;
-    for (; i < max; i += 4) {
-      j += appendCodePoint(dst, j, this.get32(src, i));
+  // process leftover
+  if (state.leftoverSize) {
+    while (state.leftoverSize < 4 && i < input.length) {
+      leftover[state.leftoverSize++] = input[i++];
     }
 
-    // save leftover if needed
-    this.leftoverSize = src.length - i;
-    if (this.leftoverSize) {
-      this.leftover.set(src.subarray(i));
+    if (state.leftoverSize < 4) {
+      // not enough bytes still
+      return "";
     }
 
-    // "dst" always contains correct UTF-16LE code units
-    return new TextDecoder("UTF-16", { ignoreBOM: this.noBOM }).decode(dst.subarray(0, j));
+    j += appendCodePoint(dst, j, get32(leftover, 0));
   }
-}
+
+  const max = input.length - 3;
+  for (; i < max; i += 4) {
+    j += appendCodePoint(dst, j, get32(input, i));
+  }
+
+  // save leftover if needed
+  state.leftoverSize = input.length - i;
+  if (state.leftoverSize) {
+    leftover.set(input.subarray(i));
+  }
+
+  // "dst" always contains correct UTF-16LE code units
+  return new TextDecoder("UTF-16", { ignoreBOM: noBOM }).decode(dst.subarray(0, j));
+};
 
 /**
- * @type {!Array<function(new: ns.CharsetDecoder, ...*)>}
+ * @type {!DecoderOperations}
  */
-const DECODERS = [UTF16Decoder, UTF32Decoder, UTF8Decoder];
+const decoderOpUTF32 = {
+  createDecodeStateFn: createDecodeStateUTF32,
+  decodeFn: decodeUTF32,
+};
+
+// UTF-16/32 ENCODE
 
 /**
- * @type {!Array<function(new: ns.CharsetEncoder, ...*)>}
+ * @typedef {{
+ *  doBOM: boolean,
+ *  appendBOM: boolean,
+ *  sz: number,
+ *  put: !PutFn,
+ * }}
  */
-const ENCODERS = [UnicodeEncoder, UnicodeEncoder, UTF8Encoder];
+const EncodeStateUTF = {};
 
 /**
- * @implements {ns.Encoding}
+ * @type {!CreateEncodeStateFn}
  */
-class UnicodeCharset extends Charset {
+const createEncodeStateUTF = (charsetCtx, options) => {
+  const { i, bo } = /** @type {!UnicodeCharsetContext} */ (charsetCtx);
+  const doBOM = options.addBOM ?? ADD_BOM_DEFAULT;
   /**
-   * @param {number} i - 0 for UTF-16, 1 for UTF-32, 2 for UTF-8
-   * @param {number} bo - 0 for LE, 1 for BE, 2 for none
+   * @type {!EncodeStateUTF}
    */
-  constructor(i, bo) {
-    super("UTF-" + NAMES[i] + POSTFIX[bo]);
-    this.i = i;
-    this.bo = bo;
-  }
+  const state = {
+    doBOM,
+    appendBOM: doBOM,
+    sz: 1 << (i + 1),
+    put: i ? (bo ? put32BE : put32LE) : bo ? put16BE : put16LE,
+  };
+  return state;
+};
 
-  /**
-   * @override
-   * @param {!ns.DecoderOptions} [options]
-   * @return {!ns.CharsetDecoder}
-   */
-  // @ts-expect-error
-  newDecoder(options) {
-    return new DECODERS[this.i](!(options?.stripBOM ?? STRIP_BOM_DEFAULT), this.bo);
+/**
+ * @type {!EncodeIntoFn}
+ */
+const encodeIntoUTF = (encodeState, src, dst) => {
+  const state = /** @type {!EncodeStateUTF} */ (encodeState);
+  const { appendBOM, sz, put } = state;
+  let j = 0;
+  if (appendBOM) {
+    if (dst.length < sz) {
+      return { read: 0, written: 0 };
+    }
+    put(BOM_CHAR, 0, dst, j);
+    j += sz;
+    state.appendBOM = false;
   }
+  const max = Math.min(src.length, (dst.length - j) & ~(sz - 1));
+  for (let i = 0; i < max; i++, j += sz) {
+    i += put(src, i, dst, j);
+  }
+  return { read: max, written: j };
+};
 
-  /**
-   * @override
-   * @param {!ns.EncoderOptions} [options]
-   * @return {!ns.CharsetEncoder}
-   */
-  // @ts-expect-error
-  newEncoder(options) {
-    return new ENCODERS[this.i](options?.addBOM ?? ADD_BOM_DEFAULT, this.i, this.bo);
+/**
+ * @type {!ByteLengthFn}
+ */
+const byteLengthMaxUTF = (encodeState, op, text) => {
+  const state = /** @type {!EncodeStateUTF} */ (encodeState);
+  return (state.doBOM ? state.sz : 0) + text.length * state.sz;
+};
+
+/**
+ * @type {!ByteLengthFn}
+ */
+const byteLengthUTF = (encodeState, op, text) => {
+  const state = /** @type {!EncodeStateUTF} */ (encodeState);
+  if (state.sz === 4) {
+    // UTF-32: a surrogate pair (two UTF-16 code units) is one UTF-32 code unit (4 bytes)
+    return byteLengthDefault(state, op, text);
   }
-}
+  // UTF-16
+  return byteLengthMaxUTF(state, op, text);
+};
+
+/**
+ * @type {!EncoderOperations}
+ */
+const encoderOpUTF = {
+  createEncodeStateFn: createEncodeStateUTF,
+  encodeIntoFn: encodeIntoUTF,
+  byteLengthMaxFn: byteLengthMaxUTF,
+  byteLengthFn: byteLengthUTF,
+};
+
+/**
+ * @typedef {{
+ *  i: number,
+ *  decoderOp: !DecoderOperations,
+ *  encoderOp: !EncoderOperations,
+ * }}
+ */
+const CharsetConfig = {};
+
+/**
+ * @type {!Array<!CharsetConfig>}
+ */
+const CHARSET_CONFIG = [
+  {
+    i: 16,
+    decoderOp: decoderOpUTF16,
+    encoderOp: encoderOpUTF,
+  },
+  {
+    i: 32,
+    decoderOp: decoderOpUTF32,
+    encoderOp: encoderOpUTF,
+  },
+  {
+    i: 8,
+    decoderOp: decoderOpUTF8,
+    encoderOp: encoderOpUTF8,
+  },
+];
+
+/**
+ * @typedef {{
+ *   charsetName: string,
+ *   i: number,
+ *   bo: number,
+ * }}
+ */
+const UnicodeCharsetContext = {};
 
 /**
  * @implements {ns.EncodingFactory}
@@ -393,8 +487,12 @@ export class Unicode {
    * @param {number} bo
    */
   constructor(i, bo) {
-    this.i = i;
-    this.bo = bo;
+    const cfg = CHARSET_CONFIG[i];
+    /**
+     * @type {!UnicodeCharsetContext}
+     */
+    const ctx = { charsetName: "UTF-" + cfg.i + ["LE", "BE", ""][bo], i, bo };
+    this.encoding = createEncoding(ctx, cfg.decoderOp, cfg.encoderOp);
   }
 
   /**
@@ -403,6 +501,6 @@ export class Unicode {
    */
   // @ts-expect-error
   create() {
-    return new UnicodeCharset(this.i, this.bo);
+    return this.encoding;
   }
 }

@@ -1,14 +1,3 @@
-export class IconvTiny {
-  /**
-   * @param encodings A map of encodings to support.
-   * @param aliases Comma-separated groups, each containing space-separated aliases for the same encoding.
-   */
-  constructor(encodings?: { [key: string]: EncodingFactory }, aliases?: string);
-  decode(array: Uint8Array, encoding: string, options?: OptionsAndDecoderOptions): string;
-  encode(content: string, encoding: string, options?: OptionsAndEncoderOptions): Uint8Array;
-  getEncoding(encoding: string, options?: Options): Encoding;
-}
-
 /**
  * Converts an encoding name to a normalized, unique name.
  * Removes non-alphanumeric characters and leading zeros.
@@ -17,6 +6,18 @@ export class IconvTiny {
  * @returns {string}
  */
 export function canonicalize(encoding: string): string;
+
+/**
+ * @param encodings - A map of encodings to support.
+ * @param aliases - Comma-separated groups, each containing space-separated aliases for the same encoding.
+ */
+export function createIconv(encodings?: { [key: string]: EncodingFactory }, aliases?: string): IconvTiny;
+
+interface IconvTiny {
+  decode(array: Uint8Array, encoding: string, options?: OptionsAndDecoderOptions): string;
+  encode(content: string, encoding: string, options?: OptionsAndEncoderOptions): Uint8Array;
+  getEncoding(encoding: string, options?: Options): Encoding;
+}
 
 interface Encoding {
   getName(): string;
@@ -36,13 +37,13 @@ interface CharsetDecoder {
 
 interface CharsetEncoder {
   encode(text?: string): Uint8Array;
-  encodeInto(src: string, dst: Uint8Array): TextEncoderEncodeIntoResult;
+  encodeInto(text: string, dst: Uint8Array): TextEncoderEncodeIntoResult;
   /**
    * Similar to Buffer.byteLength;
-   * @param src input to calculate the length of
+   * @param text - input to calculate the length of
    * @returns The number of bytes of the specified string
    */
-  byteLength(src: string): number;
+  byteLength(text: string): number;
 }
 
 type TextEncoderEncodeIntoResult = {
@@ -96,22 +97,30 @@ type Options = {
 type Overrides = Array<number | string>;
 
 /**
+ * @param {number} input
+ * @param {number} index
+ * @returns {number}
+ */
+type DefaultFunction = (input: number, index: number) => number | null | undefined;
+
+/**
  * @param {number} input - input character code (0-65536)
  * @param {number} index - index of the character
  * @returns {number} default byte (0-255)
  */
-type DefaultCharByteFunction = (input: number, index: number) => number | null | undefined;
+type DefaultCharByteFunction = DefaultFunction;
 
 /**
  * @param {number} input - input byte (0-255)
  * @param {number} index - index of the byte
  * @returns {number} default character code (0-65536)
  */
-type DefaultCharUnicodeFunction = (input: number, index: number) => number | null | undefined;
+type DefaultCharUnicodeFunction = DefaultFunction;
 
 type OptionsAndDecoderOptions = Options & DecoderOptions;
 type OptionsAndEncoderOptions = Options & EncoderOptions;
 
+export const US_ASCII: EncodingFactory;
 export const ISO_8859_1: EncodingFactory;
 export const ISO_8859_2: EncodingFactory;
 export const ISO_8859_3: EncodingFactory;
@@ -128,6 +137,7 @@ export const ISO_8859_14: EncodingFactory;
 export const ISO_8859_15: EncodingFactory;
 export const ISO_8859_16: EncodingFactory;
 export const CP037: EncodingFactory;
+export const CP424: EncodingFactory;
 export const CP500: EncodingFactory;
 export const CP875: EncodingFactory;
 export const CP1026: EncodingFactory;
@@ -163,14 +173,15 @@ export const MAC_LATIN2: EncodingFactory;
 export const MAC_ROMAN: EncodingFactory;
 export const MAC_TURKISH: EncodingFactory;
 export const ATARIST: EncodingFactory;
-export const CP424: EncodingFactory;
 export const CP856: EncodingFactory;
 export const CP1006: EncodingFactory;
 export const KOI8_R: EncodingFactory;
 export const KOI8_U: EncodingFactory;
 export const KZ1048: EncodingFactory;
 export const NEXTSTEP: EncodingFactory;
-export const US_ASCII: EncodingFactory;
+export const JIS_0201: EncodingFactory;
+export const SHIFT_JIS: EncodingFactory;
+export const CP932: EncodingFactory;
 export const UTF8: EncodingFactory;
 export const UTF16LE: EncodingFactory;
 export const UTF16BE: EncodingFactory;

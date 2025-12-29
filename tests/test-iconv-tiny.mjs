@@ -1,4 +1,4 @@
-import { CP1251, ISO_8859_15, IconvTiny, aliases, canonicalize, encodings } from "iconv-tiny";
+import { CP1251, ISO_8859_15, createIconv, aliases, canonicalize, encodings } from "iconv-tiny";
 import { expect, test } from "vitest";
 
 test("canonicalize", () => {
@@ -14,7 +14,7 @@ test("canonicalize", () => {
 });
 
 test("iconvTiny", () => {
-  const iconv = new IconvTiny(encodings, aliases + ",xyz-666 cp1251");
+  const iconv = createIconv(encodings, aliases + ",xyz-666 cp1251");
   expect(iconv.encode("", "xyz-666")).toStrictEqual(new Uint8Array([]));
   expect(iconv.encode("Љубав", "xyz-666")).toStrictEqual(new Uint8Array([138, 243, 225, 224, 226]));
   expect(() => iconv.encode("Љубав", "xyz")).toThrow(`Encoding "xyz" not supported`);
@@ -24,7 +24,7 @@ test("iconvTiny", () => {
 
 test("iconvTiny 2", () => {
   const encodings1 = /** @type {any} */ ({ 12: null, test: "123" });
-  const iconv = new IconvTiny(encodings1);
+  const iconv = createIconv(encodings1);
   try {
     iconv.encode("Hello", "12");
     throw new Error();
@@ -51,7 +51,7 @@ test("grapheme cluster", () => {
 });
 
 test("iconvTiny strict flag", () => {
-  const iconv = new IconvTiny({ CP1251, ISO_8859_15 });
+  const iconv = createIconv({ CP1251, ISO_8859_15 });
   const overrides = [1, 0xd7ff, 2, 0xd800, 3, 0xd801, 4, 0xd802];
   const buf = new Uint8Array([1, 2, 3, 4]);
   // const fastMode = iconvTiny.decode(buf, "iso8859-15", { overrides, strictDecode: false });

@@ -1,3 +1,5 @@
+import { ByteLengthFn, CharsetContext, DecoderOperations, EncoderOperations } from "./types.mjs";
+
 /**
  * @type {number}
  */
@@ -8,14 +10,9 @@ export const REPLACEMENT_CHARACTER_CODE = 0xfffd; // �
  */
 export const DEFAULT_CHAR_BYTE = 63; // "?"
 
-/**
- * @type {boolean}
- */
-export const DEFAULT_NATIVE_DECODE = false;
-
 const STRING_SMALLSIZE = 192;
 const STRING_CHUNKSIZE = 1024;
-const UTF16 = new TextDecoder("UTF-16LE", { fatal: true });
+const UTF16LE = new TextDecoder("utf-16le", { fatal: true });
 
 /**
  * @param {!Uint16Array} u16
@@ -40,23 +37,154 @@ export const getString = (u16) => {
     return String.fromCharCode(...u16);
   }
   try {
-    return UTF16.decode(u16);
+    return UTF16LE.decode(u16);
   } catch {
     return getStringFallback(u16);
   }
 };
 
 /**
- * @abstract
+ * @param {number} num
+ * @return {boolean}
+ */
+export const isMapped = (num) => num !== REPLACEMENT_CHARACTER_CODE;
+
+/**
+ * @type {!ByteLengthFn}
+ */
+export const byteLengthDefault = (state, op, text) => {
+  let total = 0;
+  const buf = new Uint8Array(4096);
+  do {
+    const { read, written } = op.encodeIntoFn(state, text, buf);
+    text = text.slice(read);
+    total += written;
+  } while (text.length);
+  return total;
+};
+
+/**
+ * @implements {ns.CharsetDecoder}
+ */
+class CharsetDecoder {
+  /**
+   * @param {!CharsetContext} ctx
+   * @param {!DecoderOperations} op
+   * @param {!ns.DecoderOptions} [options]
+   */
+  constructor(ctx, op, options) {
+    this.state = op.createDecodeStateFn(ctx, options ?? {});
+    this.op = op;
+  }
+
+  /**
+   * @override
+   * @param {!Uint8Array} [src]
+   * @return {string}
+   */
+  // @ts-expect-error
+  decode(src) {
+    return this.op.decodeFn(this.state, src);
+  }
+}
+
+/**
+ * @implements {ns.CharsetEncoder}
+ */
+class CharsetEncoder {
+  /**
+   * @param {!CharsetContext} ctx
+   * @param {!EncoderOperations} op
+   * @param {!ns.EncoderOptions} [options]
+   */
+  constructor(ctx, op, options) {
+    /**
+     * @private
+     * @constant
+     */
+    this.ctx = ctx;
+    /**
+     * @private
+     * @constant
+     */
+    this.op = op;
+    /**
+     * @private
+     * @constant
+     */
+    this.options = options ?? {};
+    /**
+     * @private
+     * @constant
+     */
+    this.state = op.createEncodeStateFn(ctx, this.options);
+  }
+
+  /**
+   * @override
+   * @param {string} [text]
+   * @return {!Uint8Array}
+   */
+  // @ts-expect-error
+  encode(text) {
+    if (!text) {
+      return new Uint8Array(0);
+    }
+    const { ctx, op, options } = this;
+    const maxLen = op.byteLengthMaxFn(op.createEncodeStateFn(ctx, options), op, text);
+    const buf = new Uint8Array(maxLen);
+    const { written } = op.encodeIntoFn(this.state, text, buf);
+    return buf.subarray(0, written);
+  }
+
+  /**
+   * @override
+   * @param {string} text
+   * @param {!Uint8Array} dst
+   * @return {!ns.TextEncoderEncodeIntoResult}
+   */
+  // @ts-expect-error
+  encodeInto(text, dst) {
+    return this.op.encodeIntoFn(this.state, text, dst);
+  }
+
+  /**
+   * @override
+   * @param {string} text
+   * @return {number}
+   */
+  // @ts-expect-error
+  byteLength(text) {
+    const { ctx, op, options } = this;
+    return op.byteLengthFn(op.createEncodeStateFn(ctx, options), op, text);
+  }
+}
+
+/**
  * @implements {ns.Encoding}
  */
-// @ts-expect-error
-export class Charset {
+class Encoding {
   /**
-   * @param {string} charsetName
+   * @param {!CharsetContext} ctx
+   * @param {!DecoderOperations} decoderOp
+   * @param {!EncoderOperations} encoderOp
    */
-  constructor(charsetName) {
-    this.charsetName = charsetName;
+  constructor(ctx, decoderOp, encoderOp) {
+    /**
+     * @public
+     * @constant
+     */
+    this.ctx = ctx;
+    /**
+     * @private
+     * @constant
+     */
+    this.decoderOp = decoderOp;
+    /**
+     * @private
+     * @constant
+     */
+    this.encoderOp = encoderOp;
   }
 
   /**
@@ -65,7 +193,7 @@ export class Charset {
    */
   // @ts-expect-error
   getName() {
-    return this.charsetName;
+    return this.ctx.charsetName;
   }
 
   /**
@@ -76,10 +204,6 @@ export class Charset {
    */
   // @ts-expect-error
   decode(array, options) {
-    /**
-     * @type {!ns.CharsetDecoder}
-     */
-    // @ts-expect-error
     const decoder = this.newDecoder(options);
     return decoder.decode(array) + decoder.decode();
   }
@@ -92,86 +216,35 @@ export class Charset {
    */
   // @ts-expect-error
   encode(text, options) {
-    /**
-     * @type {!ns.CharsetEncoder}
-     */
-    // @ts-expect-error
     const encoder = this.newEncoder(options);
     return encoder.encode(text);
   }
+
+  /**
+   * @override
+   * @param {!ns.DecoderOptions} [options]
+   * @return {!ns.CharsetDecoder}
+   */
+  // @ts-expect-error
+  newDecoder(options) {
+    return new CharsetDecoder(this.ctx, this.decoderOp, options);
+  }
+
+  /**
+   * @override
+   * @param {!ns.EncoderOptions} [options]
+   * @return {!ns.CharsetEncoder}
+   */
+  // @ts-expect-error
+  newEncoder(options) {
+    return new CharsetEncoder(this.ctx, this.encoderOp, options);
+  }
 }
 
 /**
- * @implements {ns.CharsetDecoder}
+ * @param {!CharsetContext} ctx
+ * @param {!DecoderOperations} decoderOp
+ * @param {!EncoderOperations} encoderOp
+ * @return {!ns.Encoding}
  */
-export class NativeCharsetDecoder {
-  /**
-   * @param {!TextDecoder} decoder
-   */
-  constructor(decoder) {
-    this.decoder = decoder;
-  }
-
-  /**
-   * @override
-   * @param {!Uint8Array} [array]
-   * @return {string}
-   */
-  // @ts-expect-error
-  decode(array) {
-    return this.decoder.decode(array, { stream: Boolean(array) });
-  }
-}
-
-/**
- * @abstract
- * @implements {ns.CharsetEncoder}
- */
-// @ts-expect-error
-export class CharsetEncoderBase {
-  /**
-   * @override
-   * @param {string} [text]
-   * @return {!Uint8Array}
-   */
-  // @ts-expect-error
-  encode(text) {
-    this.reset();
-    if (!text) {
-      return new Uint8Array(0);
-    }
-    const buf = new Uint8Array(this.byteLengthMax(text));
-    // @ts-expect-error
-    const { written } = this.encodeInto(text, buf);
-    return buf.subarray(0, written);
-  }
-
-  // @ts-expect-error
-  // eslint-disable-next-line jsdoc/empty-tags
-  /** @abstract @param {string} text @return {number} */
-  // eslint-disable-next-line no-unused-vars, no-empty-function, class-methods-use-this
-  byteLengthMax(text) {}
-
-  /**
-   * @override
-   * @param {string} text
-   * @return {number}
-   */
-  // @ts-expect-error
-  byteLength(text) {
-    this.reset();
-    let total = 0;
-    const buf = new Uint8Array(4096);
-    do {
-      // @ts-expect-error
-      const { read, written } = this.encodeInto(text, buf);
-      text = text.slice(read);
-      total += written;
-    } while (text.length);
-    return total;
-  }
-
-  /** @abstract */
-  // eslint-disable-next-line no-empty-function, class-methods-use-this
-  reset() {}
-}
+export const createEncoding = (ctx, decoderOp, encoderOp) => new Encoding(ctx, decoderOp, encoderOp);

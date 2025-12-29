@@ -2,17 +2,6 @@
  * @see {@link file://./externs.mjs}
  */
 declare namespace ns {
-  export class IconvTiny {
-    /**
-     * @param encodings A map of encodings to support.
-     * @param aliases Comma-separated groups, each containing space-separated aliases for the same encoding.
-     */
-    constructor(encodings?: { [key: string]: EncodingFactory }, aliases?: string);
-    decode(array: Uint8Array, encoding: string, options?: OptionsAndDecoderOptions): string;
-    encode(content: string, encoding: string, options?: OptionsAndEncoderOptions): Uint8Array;
-    getEncoding(encoding: string, options?: Options): Encoding;
-  }
-
   /**
    * Converts an encoding name to a normalized, unique name.
    * Removes non-alphanumeric characters and leading zeros.
@@ -21,6 +10,18 @@ declare namespace ns {
    * @returns {string}
    */
   export function canonicalize(encoding: string): string;
+
+  /**
+   * @param encodings - A map of encodings to support.
+   * @param aliases - Comma-separated groups, each containing space-separated aliases for the same encoding.
+   */
+  export function createIconv(encodings?: { [key: string]: EncodingFactory }, aliases?: string): IconvTiny;
+
+  interface IconvTiny {
+    decode(array: Uint8Array, encoding: string, options?: OptionsAndDecoderOptions): string;
+    encode(content: string, encoding: string, options?: OptionsAndEncoderOptions): Uint8Array;
+    getEncoding(encoding: string, options?: Options): Encoding;
+  }
 
   interface Encoding {
     getName(): string;
@@ -40,13 +41,13 @@ declare namespace ns {
 
   interface CharsetEncoder {
     encode(text?: string): Uint8Array;
-    encodeInto(src: string, dst: Uint8Array): TextEncoderEncodeIntoResult;
+    encodeInto(text: string, dst: Uint8Array): TextEncoderEncodeIntoResult;
     /**
      * Similar to Buffer.byteLength;
-     * @param src input to calculate the length of
+     * @param text - input to calculate the length of
      * @returns The number of bytes of the specified string
      */
-    byteLength(src: string): number;
+    byteLength(text: string): number;
   }
 
   type TextEncoderEncodeIntoResult = {
@@ -100,18 +101,25 @@ declare namespace ns {
   type Overrides = Array<number | string>;
 
   /**
+   * @param {number} input
+   * @param {number} index
+   * @returns {number}
+   */
+  type DefaultFunction = (input: number, index: number) => number | null | undefined;
+
+  /**
    * @param {number} input - input character code (0-65536)
    * @param {number} index - index of the character
    * @returns {number} default byte (0-255)
    */
-  type DefaultCharByteFunction = (input: number, index: number) => number | null | undefined;
+  type DefaultCharByteFunction = DefaultFunction;
 
   /**
    * @param {number} input - input byte (0-255)
    * @param {number} index - index of the byte
    * @returns {number} default character code (0-65536)
    */
-  type DefaultCharUnicodeFunction = (input: number, index: number) => number | null | undefined;
+  type DefaultCharUnicodeFunction = DefaultFunction;
 
   type OptionsAndDecoderOptions = Options & DecoderOptions;
   type OptionsAndEncoderOptions = Options & EncoderOptions;

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "iconv-tiny",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "description": "Pure JS ESM Encodings for Browser and NodeJS",
   "sideEffects": false,
   "keywords": [
@@ -16,7 +16,7 @@
     "url": "https://github.com/vip-delete/iconv-tiny/issues"
   },
   "license": "MIT",
-  "author": "vip.delete",
+  "author": "vip.delete <vip.delete@gmail.com>",
   "files": [
     "dist/iconv-tiny.d.mts",
     "dist/iconv-tiny.mjs",
@@ -44,18 +44,19 @@
     "@stylistic/eslint-plugin": "^5.x",
     "@types/express": "^5.x",
     "@types/google-closure-compiler": "^20231112.0.0",
-    "@types/node": "^24.x",
+    "@types/node": "^25.x",
     "@types/serve-static": "^2.x",
     "@vitest/coverage-istanbul": "^4.x",
-    "@vue/runtime-dom": "^3.5.22",
-    "esbuild": "^0.25.x",
+    "@vue/runtime-dom": "^3.5.26",
+    "esbuild": "^0.27.x",
     "eslint": "^9.x",
     "eslint-plugin-jsdoc": "^61.x",
     "express": "^5.x",
-    "google-closure-compiler": "^20251029.0.0",
-    "iconv-lite": "^0.7.0",
+    "google-closure-compiler": "^20251216.0.0",
+    "iconv-lite": "^0.7.1",
     "prettier": "^3.x",
     "serve-static": "^2.x",
+    "tinybench": "^6.x",
     "vitest": "^4.x"
   }
 }

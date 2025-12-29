@@ -1,8 +1,8 @@
-import { IconvTiny, aliases, encodings } from "iconv-tiny";
+import { createIconv, aliases, encodings } from "iconv-tiny";
 
 // This is a simple example of the non-direct usage.
 // We pass a list of encodings and their aliases.
-const iconv = new IconvTiny(encodings, aliases);
+const iconv = createIconv(encodings, aliases);
 
 // it just works
 console.log(iconv.encode("Без муке нема науке", "windows-1251"));
@@ -15,7 +15,7 @@ console.log(iconv.encode("Да би био вољен, воли", "ISO8859-1"));
 // console.log(iconv.encode("Hmm", "xyz-666"));
 
 // It works if we add an encoding alias xyz-666 to cp1251
-const iconv666 = new IconvTiny(encodings, aliases + ",xyz-666 cp1251");
+const iconv666 = createIconv(encodings, aliases + ",xyz-666 cp1251");
 console.log(iconv666.encode("Hmm", "xyz-666")); // [ 72, 109, 109 ]
 
 // We can specify additions options, for example:

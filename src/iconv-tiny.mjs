@@ -11,7 +11,7 @@ export const canonicalize = (encoding) =>
 /**
  * @implements {ns.IconvTiny}
  */
-export class IconvTiny {
+class IconvTiny {
   /**
    * @param {!Object<string, !ns.EncodingFactory>} [encodings]
    * @param {string} [aliases]
@@ -91,3 +91,10 @@ export class IconvTiny {
     return encoding;
   }
 }
+
+/**
+ * @param {!Object<string, !ns.EncodingFactory>} [encodings]
+ * @param {string} [aliases]
+ * @return {!ns.IconvTiny}
+ */
+export const createIconv = (encodings, aliases) => new IconvTiny(encodings, aliases);

@@ -1,4 +1,4 @@
-import { IconvTiny, UTF8 } from "iconv-tiny";
+import { createIconv, UTF8 } from "iconv-tiny";
 
 // UTF-8 decoder always use TextDecoder with { stream: true }
 
@@ -27,5 +27,5 @@ console.log(encoder.encodeInto("❓", buf)); // { read: 1, written: 3 }
 console.log(buf); // [ 226, 157, 147, 0 ]
 
 // or use IconvTiny
-console.log(new IconvTiny({ UTF8 }).encode("❓", "UTF-8")); // [ 226, 157, 147 ]
-console.log(new IconvTiny({ UTF8 }).decode(new Uint8Array([226, 157, 147]), "UTF-8")); // ❓
+console.log(createIconv({ UTF8 }).encode("❓", "UTF-8")); // [ 226, 157, 147 ]
+console.log(createIconv({ UTF8 }).decode(new Uint8Array([226, 157, 147]), "UTF-8")); // ❓

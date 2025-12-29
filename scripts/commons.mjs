@@ -32,7 +32,7 @@ export const getIdentifier = (name) => name.replaceAll("-", "_").replaceAll(/[^0
 
 /**
  * @param {string} path
- * @returns {!string}
+ * @returns {!Array<string>}
  */
 export const getExports = (path) => {
   const exports = readFileSync(path)
@@ -50,7 +50,7 @@ export const getExports = (path) => {
       return [];
     });
 
-  return "{" + exports.join(",") + "}";
+  return exports;
 };
 
 /**

@@ -1,9 +1,443 @@
 /**
- * iconv-tiny v1.2.3
- * (c) 2025-present vip.delete
+ * iconv-tiny v1.3.0
+ * (c) 2025-present vip.delete <vip.delete@gmail.com>
  * @license MIT
  **/
 
+
+// src/commons.mjs
+var REPLACEMENT_CHARACTER_CODE = 65533;
+var DEFAULT_CHAR_BYTE = 63;
+var STRING_SMALLSIZE = 192;
+var STRING_CHUNKSIZE = 1024;
+var UTF16LE = new TextDecoder("utf-16le", { fatal: true });
+var getStringFallback = (u16) => {
+  const len = u16.length;
+  const result = [];
+  for (let i = 0; i < len; i += STRING_CHUNKSIZE) {
+    result.push(String.fromCharCode(...u16.subarray(i, i + STRING_CHUNKSIZE)));
+  }
+  return result.join("");
+};
+var getString = (u16) => {
+  const len = u16.length;
+  if (len <= STRING_SMALLSIZE) {
+    return String.fromCharCode(...u16);
+  }
+  try {
+    return UTF16LE.decode(u16);
+  } catch {
+    return getStringFallback(u16);
+  }
+};
+var isMapped = (num) => num !== REPLACEMENT_CHARACTER_CODE;
+var byteLengthDefault = (state, op, text) => {
+  let total = 0;
+  const buf = new Uint8Array(4096);
+  do {
+    const { read, written } = op.encodeIntoFn(state, text, buf);
+    text = text.slice(read);
+    total += written;
+  } while (text.length);
+  return total;
+};
+var CharsetDecoder = class {
+  /**
+   * @param {!CharsetContext} ctx
+   * @param {!DecoderOperations} op
+   * @param {!ns.DecoderOptions} [options]
+   */
+  constructor(ctx, op, options) {
+    this.state = op.createDecodeStateFn(ctx, options ?? {});
+    this.op = op;
+  }
+  /**
+   * @override
+   * @param {!Uint8Array} [src]
+   * @return {string}
+   */
+  // @ts-expect-error
+  decode(src) {
+    return this.op.decodeFn(this.state, src);
+  }
+};
+var CharsetEncoder = class {
+  /**
+   * @param {!CharsetContext} ctx
+   * @param {!EncoderOperations} op
+   * @param {!ns.EncoderOptions} [options]
+   */
+  constructor(ctx, op, options) {
+    this.ctx = ctx;
+    this.op = op;
+    this.options = options ?? {};
+    this.state = op.createEncodeStateFn(ctx, this.options);
+  }
+  /**
+   * @override
+   * @param {string} [text]
+   * @return {!Uint8Array}
+   */
+  // @ts-expect-error
+  encode(text) {
+    if (!text) {
+      return new Uint8Array(0);
+    }
+    const { ctx, op, options } = this;
+    const maxLen = op.byteLengthMaxFn(op.createEncodeStateFn(ctx, options), op, text);
+    const buf = new Uint8Array(maxLen);
+    const { written } = op.encodeIntoFn(this.state, text, buf);
+    return buf.subarray(0, written);
+  }
+  /**
+   * @override
+   * @param {string} text
+   * @param {!Uint8Array} dst
+   * @return {!ns.TextEncoderEncodeIntoResult}
+   */
+  // @ts-expect-error
+  encodeInto(text, dst) {
+    return this.op.encodeIntoFn(this.state, text, dst);
+  }
+  /**
+   * @override
+   * @param {string} text
+   * @return {number}
+   */
+  // @ts-expect-error
+  byteLength(text) {
+    const { ctx, op, options } = this;
+    return op.byteLengthFn(op.createEncodeStateFn(ctx, options), op, text);
+  }
+};
+var Encoding = class {
+  /**
+   * @param {!CharsetContext} ctx
+   * @param {!DecoderOperations} decoderOp
+   * @param {!EncoderOperations} encoderOp
+   */
+  constructor(ctx, decoderOp, encoderOp3) {
+    this.ctx = ctx;
+    this.decoderOp = decoderOp;
+    this.encoderOp = encoderOp3;
+  }
+  /**
+   * @override
+   * @return {string}
+   */
+  // @ts-expect-error
+  getName() {
+    return this.ctx.charsetName;
+  }
+  /**
+   * @override
+   * @param {!Uint8Array} array
+   * @param {!ns.DecoderOptions} [options]
+   * @return {string}
+   */
+  // @ts-expect-error
+  decode(array, options) {
+    const decoder = this.newDecoder(options);
+    return decoder.decode(array) + decoder.decode();
+  }
+  /**
+   * @override
+   * @param {string} text
+   * @param {!ns.EncoderOptions} [options]
+   * @return {!Uint8Array}
+   */
+  // @ts-expect-error
+  encode(text, options) {
+    const encoder = this.newEncoder(options);
+    return encoder.encode(text);
+  }
+  /**
+   * @override
+   * @param {!ns.DecoderOptions} [options]
+   * @return {!ns.CharsetDecoder}
+   */
+  // @ts-expect-error
+  newDecoder(options) {
+    return new CharsetDecoder(this.ctx, this.decoderOp, options);
+  }
+  /**
+   * @override
+   * @param {!ns.EncoderOptions} [options]
+   * @return {!ns.CharsetEncoder}
+   */
+  // @ts-expect-error
+  newEncoder(options) {
+    return new CharsetEncoder(this.ctx, this.encoderOp, options);
+  }
+};
+var createEncoding = (ctx, decoderOp, encoderOp3) => new Encoding(ctx, decoderOp, encoderOp3);
+
+// src/mapped.mjs
+var NO_LEFTOVER = -1;
+var DEFAULT_NATIVE_DECODE = false;
+var isNativeDecoderSupported = (charsetName) => {
+  try {
+    new TextDecoder(charsetName);
+    return true;
+  } catch {
+    return false;
+  }
+};
+var nativeDecodeMapped = (decodeState, input) => {
+  const state = (
+    /** @type {!DecodeStateMapped} */
+    decodeState
+  );
+  const decoder = (
+    /** @type {!TextDecoder} */
+    state.decoder
+  );
+  return decoder.decode(input, { stream: Boolean(input) });
+};
+var createDecodeStateMapped = (charsetCtx, options) => {
+  const { charsetName, b2c, nativeDecoderSupported, softwareDecodeMapped } = (
+    /** @type {!MappedCharsetContext} */
+    charsetCtx
+  );
+  const defaultCharUnicode = options.defaultCharUnicode;
+  let defaultChar = REPLACEMENT_CHARACTER_CODE;
+  let handler = null;
+  let decoder = null;
+  const useNativeDecode = nativeDecoderSupported && (options?.native ?? DEFAULT_NATIVE_DECODE);
+  if (useNativeDecode) {
+    decoder = new TextDecoder(charsetName);
+  } else if (typeof defaultCharUnicode === "string") {
+    if (defaultCharUnicode.length) {
+      defaultChar = defaultCharUnicode.charCodeAt(0);
+    }
+  } else if (typeof defaultCharUnicode === "function") {
+    handler = defaultCharUnicode;
+  }
+  const state = {
+    b2c,
+    defaultChar,
+    handler,
+    decodeFunction: useNativeDecode ? nativeDecodeMapped : softwareDecodeMapped,
+    decoder,
+    leftover: NO_LEFTOVER
+  };
+  return state;
+};
+var createC2B = (b2c) => {
+  const c2b = new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
+  for (let i = 0; i < b2c.length; i++) {
+    const ch = b2c[i];
+    if (isMapped(ch)) {
+      c2b[ch] = i;
+    }
+  }
+  return c2b;
+};
+var createEncodeStateMapped = (charsetCtx, options) => {
+  const ctx = (
+    /** @type {!MappedCharsetContext} */
+    charsetCtx
+  );
+  const b2c = ctx.b2c;
+  if (!ctx.c2b) {
+    ctx.c2b = createC2B(b2c);
+  }
+  const c2b = ctx.c2b;
+  const defaultCharByte = options.defaultCharByte;
+  let defaultChar = DEFAULT_CHAR_BYTE;
+  let handler = null;
+  if (typeof defaultCharByte === "string") {
+    if (defaultCharByte.length) {
+      defaultChar = defaultCharByte.charCodeAt(0);
+    }
+  } else if (typeof defaultCharByte === "function") {
+    handler = defaultCharByte;
+  }
+  const state = {
+    c2b,
+    defaultChar,
+    handler
+  };
+  return state;
+};
+var decodeMapped = (decodeState, input) => {
+  const { decodeFunction } = (
+    /** @type {!DecodeStateMapped} */
+    decodeState
+  );
+  return decodeFunction(decodeState, input);
+};
+var decoderOpMapped = {
+  createDecodeStateFn: createDecodeStateMapped,
+  decodeFn: decodeMapped
+};
+var createCharsetMapped = (charsetName, b2c, softwareDecode, encoderOp3) => {
+  const nativeDecoderSupported = isNativeDecoderSupported(charsetName);
+  const ctx = { charsetName, nativeDecoderSupported, b2c, c2b: null, softwareDecodeMapped: softwareDecode };
+  return createEncoding(ctx, decoderOpMapped, encoderOp3);
+};
+
+// src/dbcs.mjs
+var decodeDBCS = (decodeState, array) => {
+  const state = (
+    /** @type {!DecodeStateMapped} */
+    decodeState
+  );
+  const { b2c, defaultChar, handler, leftover } = state;
+  if (!array) {
+    state.leftover = NO_LEFTOVER;
+    return leftover === NO_LEFTOVER ? "" : String.fromCharCode(handler?.(leftover, -1) ?? defaultChar);
+  }
+  const len = array.length;
+  if (len === 0) {
+    return "";
+  }
+  const u16 = new Uint16Array(len + 1);
+  let i = 0;
+  let j = 0;
+  let lead;
+  if (leftover === NO_LEFTOVER) {
+    lead = array[0];
+  } else {
+    state.leftover = NO_LEFTOVER;
+    lead = leftover;
+    i = -1;
+  }
+  for (; ; ) {
+    let ch = b2c[lead];
+    if (isMapped(ch)) {
+      u16[j++] = ch;
+    } else if (i + 1 < len) {
+      const trail = array[i + 1];
+      const code = lead << 8 | trail;
+      ch = b2c[code];
+      if (isMapped(ch)) {
+        i++;
+      } else {
+        ch = handler?.(ch, i) ?? defaultChar;
+      }
+      u16[j++] = ch;
+    } else {
+      state.leftover = lead;
+      break;
+    }
+    i++;
+    if (i < len) {
+      lead = array[i];
+    } else {
+      break;
+    }
+  }
+  return getString(u16.subarray(0, j));
+};
+var encodeIntoDBCS = (encodeState, src, dst) => {
+  const { c2b, defaultChar, handler } = (
+    /** @type {!EncodeStateMapped} */
+    encodeState
+  );
+  let i = 0;
+  let j = 0;
+  const srcLen = src.length;
+  const dstLen = dst.length;
+  const dstLen1 = dstLen - 1;
+  for (; i < srcLen; i++) {
+    const ch = src.charCodeAt(i);
+    const val = c2b[ch];
+    const value = isMapped(val) ? val : handler?.(ch, i) ?? defaultChar;
+    if (value > 255) {
+      if (j >= dstLen1) {
+        break;
+      }
+      dst[j] = value >> 8;
+      dst[j + 1] = value;
+      j += 2;
+    } else {
+      if (j >= dstLen) {
+        break;
+      }
+      dst[j] = value;
+      j += 1;
+    }
+  }
+  return { read: i, written: j };
+};
+var byteLengthMaxDBCS = (encodeState, op, text) => text.length * 2;
+var encoderOp = {
+  createEncodeStateFn: createEncodeStateMapped,
+  encodeIntoFn: encodeIntoDBCS,
+  byteLengthMaxFn: byteLengthMaxDBCS,
+  byteLengthFn: byteLengthDefault
+};
+var createB2C = () => new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
+var applyMappingTable = (b2c, parent, mappingTable) => {
+  for (let rangeIdx = 0; rangeIdx < mappingTable.length; rangeIdx++) {
+    const range = mappingTable[rangeIdx];
+    const start = Number.parseInt(
+      /** @type {string} */
+      range[0],
+      16
+    );
+    let j = start;
+    let lastCharCode = -1;
+    for (let i = 1; i < range.length; i++) {
+      const value = range[i];
+      if (typeof value === "string") {
+        for (let k = 0; k < value.length; k++) {
+          b2c[j++] = value.charCodeAt(k);
+        }
+        lastCharCode = value.charCodeAt(value.length - 1);
+      }
+      if (typeof value === "number") {
+        for (let k = 0; k < value; k++) {
+          b2c[j++] = lastCharCode + 1;
+          lastCharCode++;
+        }
+      }
+    }
+  }
+  if (parent) {
+    const parentB2C = parent.createB2C();
+    for (let i = 0; i < parentB2C.length; i++) {
+      const parentCH = parentB2C[i];
+      if (isMapped(parentCH)) {
+        const ch = b2c[i];
+        if (!isMapped(ch)) {
+          b2c[i] = parentCH;
+        }
+      }
+    }
+  }
+};
+var DBCS = class {
+  /**
+   * @param {string} charsetName
+   * @param {?MappedEncodingFactory} parent
+   * @param {!Array<!Array<string|number>>} mappingTable
+   */
+  constructor(charsetName, parent, mappingTable) {
+    this.charsetName = charsetName;
+    this.parent = parent;
+    this.mappingTable = mappingTable;
+  }
+  /**
+   * @override
+   * @return {!ns.Encoding}
+   */
+  // @ts-expect-error
+  create() {
+    return createCharsetMapped(this.charsetName, this.createB2C(), decodeDBCS, encoderOp);
+  }
+  /**
+   * @override
+   * @return {!Uint16Array}
+   */
+  // @ts-expect-error
+  createB2C() {
+    const b2c = createB2C();
+    applyMappingTable(b2c, this.parent, this.mappingTable);
+    return b2c;
+  }
+};
 
 // src/iconv-tiny.mjs
 var canonicalize = (encoding) => encoding.toLowerCase().replace(/[^a-z0-9]/gu, "").replace(/(?<!\d)0+/gu, "");
@@ -70,293 +504,84 @@ var IconvTiny = class {
     return encoding;
   }
 };
-
-// src/commons.mjs
-var REPLACEMENT_CHARACTER_CODE = 65533;
-var DEFAULT_CHAR_BYTE = 63;
-var DEFAULT_NATIVE_DECODE = false;
-var STRING_SMALLSIZE = 192;
-var STRING_CHUNKSIZE = 1024;
-var UTF16 = new TextDecoder("UTF-16LE", { fatal: true });
-var getStringFallback = (u16) => {
-  const len = u16.length;
-  const result = [];
-  for (let i = 0; i < len; i += STRING_CHUNKSIZE) {
-    result.push(String.fromCharCode(...u16.subarray(i, i + STRING_CHUNKSIZE)));
-  }
-  return result.join("");
-};
-var getString = (u16) => {
-  const len = u16.length;
-  if (len <= STRING_SMALLSIZE) {
-    return String.fromCharCode(...u16);
-  }
-  try {
-    return UTF16.decode(u16);
-  } catch {
-    return getStringFallback(u16);
-  }
-};
-var Charset = class {
-  /**
-   * @param {string} charsetName
-   */
-  constructor(charsetName) {
-    this.charsetName = charsetName;
-  }
-  /**
-   * @override
-   * @return {string}
-   */
-  // @ts-expect-error
-  getName() {
-    return this.charsetName;
-  }
-  /**
-   * @override
-   * @param {!Uint8Array} array
-   * @param {!ns.DecoderOptions} [options]
-   * @return {string}
-   */
-  // @ts-expect-error
-  decode(array, options) {
-    const decoder = this.newDecoder(options);
-    return decoder.decode(array) + decoder.decode();
-  }
-  /**
-   * @override
-   * @param {string} text
-   * @param {!ns.EncoderOptions} [options]
-   * @return {!Uint8Array}
-   */
-  // @ts-expect-error
-  encode(text, options) {
-    const encoder = this.newEncoder(options);
-    return encoder.encode(text);
-  }
-};
-var NativeCharsetDecoder = class {
-  /**
-   * @param {!TextDecoder} decoder
-   */
-  constructor(decoder) {
-    this.decoder = decoder;
-  }
-  /**
-   * @override
-   * @param {!Uint8Array} [array]
-   * @return {string}
-   */
-  // @ts-expect-error
-  decode(array) {
-    return this.decoder.decode(array, { stream: Boolean(array) });
-  }
-};
-var CharsetEncoderBase = class {
-  /**
-   * @override
-   * @param {string} [text]
-   * @return {!Uint8Array}
-   */
-  // @ts-expect-error
-  encode(text) {
-    this.reset();
-    if (!text) {
-      return new Uint8Array(0);
-    }
-    const buf = new Uint8Array(this.byteLengthMax(text));
-    const { written } = this.encodeInto(text, buf);
-    return buf.subarray(0, written);
-  }
-  // @ts-expect-error
-  // eslint-disable-next-line jsdoc/empty-tags
-  /** @abstract @param {string} text @return {number} */
-  // eslint-disable-next-line no-unused-vars, no-empty-function, class-methods-use-this
-  byteLengthMax(text) {
-  }
-  /**
-   * @override
-   * @param {string} text
-   * @return {number}
-   */
-  // @ts-expect-error
-  byteLength(text) {
-    this.reset();
-    let total = 0;
-    const buf = new Uint8Array(4096);
-    do {
-      const { read, written } = this.encodeInto(text, buf);
-      text = text.slice(read);
-      total += written;
-    } while (text.length);
-    return total;
-  }
-  /** @abstract */
-  // eslint-disable-next-line no-empty-function, class-methods-use-this
-  reset() {
-  }
-};
+var createIconv = (encodings2, aliases2) => new IconvTiny(encodings2, aliases2);
 
 // src/sbcs.mjs
-var SBCSDecoder = class {
-  /**
-   * @param {!Uint16Array} b2c
-   * @param {!ns.DefaultCharUnicodeFunction|string} [defaultCharUnicode]
-   */
-  constructor(b2c, defaultCharUnicode) {
-    this.b2c = b2c;
-    if (typeof defaultCharUnicode !== "function") {
-      const defaultCharUnicodeCode = defaultCharUnicode?.length ? defaultCharUnicode.charCodeAt(0) : REPLACEMENT_CHARACTER_CODE;
-      defaultCharUnicode = () => defaultCharUnicodeCode;
-    }
-    this.handler = defaultCharUnicode;
+var softwareDecodeSBCS = (decodeState, input) => {
+  if (!input) {
+    return "";
   }
-  /**
-   * @override
-   * @param {!Uint8Array} [array]
-   * @return {string}
-   */
-  // @ts-expect-error
-  decode(array) {
-    if (!array) {
-      return "";
-    }
-    const { b2c, handler } = this;
-    const len = array.length;
-    const u16 = new Uint16Array(len);
-    for (let i = 0; i < len; i++) {
-      const byte = array[i];
-      const ch = b2c[byte];
-      u16[i] = ch === REPLACEMENT_CHARACTER_CODE ? handler(byte, i) ?? ch : ch;
-    }
-    return getString(u16);
+  const { b2c, defaultChar, handler } = (
+    /** @type {!DecodeStateMapped} */
+    decodeState
+  );
+  const len = input.length;
+  const u16 = new Uint16Array(len);
+  for (let i = 0; i < len; i++) {
+    const byte = input[i];
+    const ch = b2c[byte];
+    u16[i] = isMapped(ch) ? ch : handler?.(byte, i) ?? defaultChar;
   }
+  return getString(u16);
 };
-var SBCSEncoder = class extends CharsetEncoderBase {
-  /**
-   * @param {!Uint16Array} c2b
-   * @param {!ns.DefaultCharByteFunction|string} [defaultCharByte]
-   */
-  constructor(c2b, defaultCharByte) {
-    super();
-    this.c2b = c2b;
-    if (typeof defaultCharByte !== "function") {
-      const defaultCharByteCode = defaultCharByte?.length ? defaultCharByte.charCodeAt(0) : DEFAULT_CHAR_BYTE;
-      defaultCharByte = () => defaultCharByteCode;
-    }
-    this.handler = defaultCharByte;
+var encodeIntoSBCS = (encodeState, src, dst) => {
+  const { c2b, defaultChar, handler } = (
+    /** @type {!EncodeStateMapped} */
+    encodeState
+  );
+  const len = Math.min(src.length, dst.length);
+  for (let i = 0; i < len; i++) {
+    const ch = src.charCodeAt(i);
+    const byte = c2b[ch];
+    dst[i] = isMapped(byte) ? byte : handler?.(ch, i) ?? defaultChar;
   }
-  /**
-   * @override
-   * @param {string} src
-   * @param {!Uint8Array} dst
-   * @return {!ns.TextEncoderEncodeIntoResult}
-   */
-  // @ts-expect-error
-  encodeInto(src, dst) {
-    const { c2b, handler } = this;
-    const len = Math.min(src.length, dst.length);
-    for (let i = 0; i < len; i++) {
-      const ch = src.charCodeAt(i);
-      const byte = c2b[ch];
-      dst[i] = byte === REPLACEMENT_CHARACTER_CODE ? handler(ch, i) ?? DEFAULT_CHAR_BYTE : byte;
-    }
-    return { read: len, written: len };
-  }
-  /**
-   * @override
-   * @param {string} text
-   * @return {number}
-   */
-  // eslint-disable-next-line class-methods-use-this
-  byteLengthMax(text) {
-    return text.length;
-  }
-  /**
-   * @override
-   * @param {string} text
-   * @return {number}
-   */
-  byteLength(text) {
-    return this.byteLengthMax(text);
-  }
-  /**
-   * @override
-   */
-  // eslint-disable-next-line class-methods-use-this
-  reset() {
-  }
+  return { read: len, written: len };
 };
-var SBCSCharset = class extends Charset {
-  /**
-   * @param {string} charsetName
-   * @param {!Uint16Array} b2c
-   */
-  constructor(charsetName, b2c) {
-    super(charsetName);
-    this.b2c = b2c;
-    this.c2b = null;
-    try {
-      this.newNativeDecoder();
-      this.nativeSupported = true;
-    } catch {
-      this.nativeSupported = false;
-    }
-  }
-  /**
-   * @override
-   * @param {!ns.DecoderOptions} [options]
-   * @return {!ns.CharsetDecoder}
-   */
-  // @ts-expect-error
-  newDecoder(options) {
-    if (this.nativeSupported && (options?.native ?? DEFAULT_NATIVE_DECODE)) {
-      return this.newNativeDecoder();
-    }
-    return new SBCSDecoder(this.b2c, options?.defaultCharUnicode);
-  }
-  /**
-   * @override
-   * @param {!ns.EncoderOptions} [options]
-   * @return {!ns.CharsetEncoder}
-   */
-  // @ts-expect-error
-  newEncoder(options) {
-    if (!this.c2b) {
-      this.c2b = new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
-      for (let i = 0; i < 256; i++) {
-        const ch = this.b2c[i];
-        if (ch !== REPLACEMENT_CHARACTER_CODE) {
-          this.c2b[ch] = i;
-        }
-      }
-    }
-    return new SBCSEncoder(this.c2b, options?.defaultCharByte);
-  }
-  /**
-   * @private
-   * @return {!ns.CharsetDecoder}
-   */
-  newNativeDecoder() {
-    return new NativeCharsetDecoder(new TextDecoder(this.charsetName));
-  }
+var byteLengthSBCS = (encodeState, op, text) => text.length;
+var encoderOp2 = {
+  createEncodeStateFn: createEncodeStateMapped,
+  encodeIntoFn: encodeIntoSBCS,
+  byteLengthMaxFn: byteLengthSBCS,
+  byteLengthFn: byteLengthSBCS
 };
-var getMappings = (symbols, diff) => {
-  const mappings = new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
+var createB2C2 = () => new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
+var applySymbols = (b2c, symbols) => {
   let i = 0;
   while (i < 256 - symbols.length) {
-    mappings[i] = i++;
+    b2c[i] = i++;
   }
   let j = 0;
   while (i < 256) {
-    mappings[i++] = symbols.charCodeAt(j++);
+    b2c[i++] = symbols.charCodeAt(j++);
   }
+};
+var applyDiff = (b2c, diff) => {
+  let i = 0;
+  while (i < diff.length) {
+    b2c[diff.charCodeAt(i)] = diff.charCodeAt(i + 1);
+    i += 2;
+  }
+};
+var replaceSpecials = (b2c) => {
+  let i = 128;
+  while (i < 256) {
+    const ch = b2c[i];
+    if (ch === " ".charCodeAt(0)) {
+      b2c[i] = i;
+    }
+    if (ch === "?".charCodeAt(0)) {
+      b2c[i] = REPLACEMENT_CHARACTER_CODE;
+    }
+    i++;
+  }
+};
+var applyOverrides = (b2c, overrides) => {
   let k = 0;
-  while (k < diff.length) {
-    mappings[diff.charCodeAt(k)] = diff.charCodeAt(k + 1);
-    k += 2;
+  while (k < overrides.length - 1) {
+    const code = overrides[k++];
+    const ch = overrides[k++];
+    b2c[Number(code)] = typeof ch === "number" ? ch : ch.charCodeAt(0);
   }
-  return mappings;
 };
 var SBCS = class {
   /**
@@ -367,7 +592,7 @@ var SBCS = class {
   constructor(charsetName, symbols, diff) {
     this.charsetName = charsetName;
     this.symbols = symbols;
-    this.diff = diff;
+    this.diff = diff ?? "";
   }
   /**
    * @override
@@ -376,22 +601,33 @@ var SBCS = class {
    */
   // @ts-expect-error
   create(options) {
-    const b2c = getMappings(this.symbols, this.diff ?? "");
-    const overrides = options?.overrides ?? [];
-    let k = 0;
-    while (k < overrides.length - 1) {
-      const i = overrides[k++];
-      const ch = overrides[k++];
-      b2c[Number(i)] = typeof ch === "number" ? ch : ch.charCodeAt(0);
-    }
-    return new SBCSCharset(this.charsetName, b2c);
+    return createCharsetMapped(this.charsetName, this.createB2C(options), softwareDecodeSBCS, encoderOp2);
+  }
+  /**
+   * @override
+   * @param {!ns.Options} [options]
+   * @return {!Uint16Array}
+   */
+  // @ts-expect-error
+  createB2C(options) {
+    const { symbols, diff } = this;
+    const b2c = createB2C2();
+    applySymbols(b2c, symbols);
+    applyDiff(b2c, diff);
+    replaceSpecials(b2c);
+    applyOverrides(b2c, options?.overrides ?? []);
+    return b2c;
   }
 };
 
 // src/unicode.mjs
+var MAX_BPM = 65535;
+var MAX_CODE_POINT = 1114111;
 var BOM_CHAR = "\uFEFF";
 var STRIP_BOM_DEFAULT = true;
 var ADD_BOM_DEFAULT = false;
+var HIGH_SURROGATE_FROM = 55296;
+var LOW_SURROGATE_FROM = 56320;
 var put16LE = (src, i, dst, j) => {
   const cp = src.charCodeAt(i);
   dst[j] = cp;
@@ -429,236 +665,257 @@ var put32BE = (src, i, dst, j) => {
 var get32LE = (src, i) => (src[i] | src[i + 1] << 8 | src[i + 2] << 16 | src[i + 3] << 24) >>> 0;
 var get32BE = (src, i) => (src[i] << 24 | src[i + 1] << 16 | src[i + 2] << 8 | src[i + 3]) >>> 0;
 var appendCodePoint = (dst, j, cp) => {
-  if (cp > 1114111) {
-    cp = REPLACEMENT_CHARACTER_CODE;
+  if (cp <= MAX_BPM) {
+    dst[j] = cp;
+    dst[j + 1] = cp >> 8;
+    return 2;
   }
-  if (cp > 65535) {
-    cp -= 65536;
-    const high = 55296 | cp >> 10;
-    const low = 56320 | cp & 1023;
-    dst[j] = high;
-    dst[j + 1] = high >> 8;
-    dst[j + 2] = low;
-    dst[j + 3] = low >> 8;
-    return 4;
+  if (cp > MAX_CODE_POINT) {
+    dst[j] = REPLACEMENT_CHARACTER_CODE;
+    dst[j + 1] = REPLACEMENT_CHARACTER_CODE >> 8;
+    return 2;
   }
-  dst[j] = cp;
-  dst[j + 1] = cp >> 8;
-  return 2;
+  cp -= 65536;
+  const high = HIGH_SURROGATE_FROM | cp >> 10;
+  const low = LOW_SURROGATE_FROM | cp & 1023;
+  dst[j] = high;
+  dst[j + 1] = high >> 8;
+  dst[j + 2] = low;
+  dst[j + 3] = low >> 8;
+  return 4;
 };
-var UTF8Decoder = class extends NativeCharsetDecoder {
-  /**
-   * @param {boolean} noBOM - stripBOM
-   */
-  constructor(noBOM) {
-    super(new TextDecoder("UTF-8", { ignoreBOM: noBOM }));
-  }
+var createDecodeStateUTF8 = (charsetCtx, options) => {
+  const noBOM = !(options.stripBOM ?? STRIP_BOM_DEFAULT);
+  const state = {
+    decoder: new TextDecoder("UTF-8", { ignoreBOM: noBOM })
+  };
+  return state;
 };
-var UTF8Encoder = class extends CharsetEncoderBase {
-  /**
-   * @param {boolean} doBOM
-   */
-  constructor(doBOM) {
-    super();
-    this.doBOM = doBOM;
-    this.appendBOM = doBOM;
-    this.encoder = new TextEncoder();
-  }
-  /**
-   * @override
-   * @param {string} src
-   * @param {!Uint8Array} dst
-   * @return {!ns.TextEncoderEncodeIntoResult}
-   */
-  // @ts-expect-error
-  encodeInto(src, dst) {
-    const { appendBOM } = this;
-    let j = 0;
-    if (appendBOM) {
-      if (dst.length < 3) {
-        return { read: 0, written: 0 };
-      }
-      dst[0] = 239;
-      dst[1] = 187;
-      dst[2] = 191;
-      j += 3;
-      this.appendBOM = false;
-    }
-    const { read, written } = this.encoder.encodeInto(src, dst.subarray(j));
-    return { read, written: written + j };
-  }
-  /**
-   * @override
-   * @param {string} src
-   * @return {number}
-   */
-  byteLengthMax(src) {
-    return (this.doBOM ? 4 : 0) + src.length * 4;
-  }
-  /**
-   * @override
-   */
-  reset() {
-    this.appendBOM = this.doBOM;
-  }
+var decodeUTF8 = (decodeState, input) => {
+  const state = (
+    /** @type {!DecodeStateUTF8} */
+    decodeState
+  );
+  return state.decoder.decode(input, { stream: Boolean(input) });
 };
-var UnicodeEncoder = class extends CharsetEncoderBase {
-  /**
-   * @param {boolean} doBOM
-   * @param {number} i - 0 for UTF-16, 1 for UTF-32
-   * @param {number} bo - 0 for LE, 1 for BE
-   */
-  constructor(doBOM, i, bo) {
-    super();
-    this.doBOM = doBOM;
-    this.appendBOM = doBOM;
-    this.sz = 1 << i + 1;
-    this.put = i ? bo ? put32BE : put32LE : bo ? put16BE : put16LE;
-  }
-  /**
-   * @override
-   * @param {string} src
-   * @param {!Uint8Array} dst
-   * @return {!ns.TextEncoderEncodeIntoResult}
-   */
-  // @ts-expect-error
-  encodeInto(src, dst) {
-    const { appendBOM, sz, put } = this;
-    let j = 0;
-    if (appendBOM) {
-      if (dst.length < sz) {
-        return { read: 0, written: 0 };
-      }
-      put(BOM_CHAR, 0, dst, j);
-      j += sz;
-      this.appendBOM = false;
-    }
-    const max = Math.min(src.length, dst.length - j & ~(sz - 1));
-    for (let i = 0; i < max; i++, j += sz) {
-      i += put(src, i, dst, j);
-    }
-    return { read: max, written: j };
-  }
-  /**
-   * @override
-   * @param {string} text
-   * @return {number}
-   */
-  byteLengthMax(text) {
-    return (this.doBOM ? this.sz : 0) + text.length * this.sz;
-  }
-  /**
-   * @override
-   * @param {string} text
-   * @return {number}
-   */
-  byteLength(text) {
-    if (this.sz === 4) {
-      return super.byteLength(text);
-    }
-    return this.byteLengthMax(text);
-  }
-  /**
-   * @override
-   */
-  reset() {
-    this.appendBOM = this.doBOM;
-  }
+var decoderOpUTF8 = {
+  createDecodeStateFn: createDecodeStateUTF8,
+  decodeFn: decodeUTF8
 };
-var POSTFIX = ["LE", "BE", ""];
-var NAMES = [16, 32, 8];
-var UTF16Decoder = class extends NativeCharsetDecoder {
-  /**
-   * @param {boolean} noBOM
-   * @param {number} bo
-   */
-  constructor(noBOM, bo) {
-    super(new TextDecoder("UTF-16" + POSTFIX[bo], { ignoreBOM: noBOM }));
-  }
+var createEncodeStateUTF8 = (charsetCtx, options) => {
+  const doBOM = options.addBOM ?? ADD_BOM_DEFAULT;
+  const state = {
+    doBOM,
+    appendBOM: doBOM,
+    encoder: new TextEncoder(),
+    highSurrogate: ""
+  };
+  return state;
 };
-var UTF32Decoder = class {
-  /**
-   * @param {boolean} noBOM
-   * @param {number} bo
-   */
-  constructor(noBOM, bo) {
-    this.noBOM = noBOM;
-    this.leftover = new Uint8Array(4);
-    this.leftoverSize = 0;
-    this.get32 = bo ? get32BE : get32LE;
+var encodeIntoUTF8 = (encodeState, src, dst) => {
+  const state = (
+    /** @type {!EncodeStateUTF8} */
+    encodeState
+  );
+  const { appendBOM } = state;
+  let j = 0;
+  if (appendBOM) {
+    if (dst.length < 3) {
+      return { read: 0, written: 0 };
+    }
+    dst[0] = 239;
+    dst[1] = 187;
+    dst[2] = 191;
+    j += 3;
+    state.appendBOM = false;
   }
-  /**
-   * @override
-   * @param {!Uint8Array} [src]
-   * @return {string}
-   */
-  // @ts-expect-error
-  decode(src) {
-    if (!src) {
-      return this.leftoverSize ? String.fromCharCode(REPLACEMENT_CHARACTER_CODE) : "";
-    }
-    const dst = new Uint8Array(src.length + 4);
-    let i = 0;
-    let j = 0;
-    if (this.leftoverSize) {
-      while (this.leftoverSize < 4 && i < src.length) {
-        this.leftover[this.leftoverSize++] = src[i++];
-      }
-      if (this.leftoverSize < 4) {
-        return "";
-      }
-      j += appendCodePoint(dst, j, this.get32(this.leftover, 0));
-    }
-    const max = src.length - 3;
-    for (; i < max; i += 4) {
-      j += appendCodePoint(dst, j, this.get32(src, i));
-    }
-    this.leftoverSize = src.length - i;
-    if (this.leftoverSize) {
-      this.leftover.set(src.subarray(i));
-    }
-    return new TextDecoder("UTF-16", { ignoreBOM: this.noBOM }).decode(dst.subarray(0, j));
+  if (state.highSurrogate) {
+    src = state.highSurrogate + src;
+    state.highSurrogate = "";
   }
+  const len1 = src.length - 1;
+  if (src.length > 0) {
+    const code = src.charCodeAt(len1);
+    if (code >= HIGH_SURROGATE_FROM && code < LOW_SURROGATE_FROM) {
+      state.highSurrogate = src.charAt(len1);
+      src = src.slice(0, len1);
+    }
+  }
+  const { read, written } = state.encoder.encodeInto(src, dst.subarray(j));
+  return { read: read + (state.highSurrogate ? 1 : 0), written: written + j };
 };
-var DECODERS = [UTF16Decoder, UTF32Decoder, UTF8Decoder];
-var ENCODERS = [UnicodeEncoder, UnicodeEncoder, UTF8Encoder];
-var UnicodeCharset = class extends Charset {
-  /**
-   * @param {number} i - 0 for UTF-16, 1 for UTF-32, 2 for UTF-8
-   * @param {number} bo - 0 for LE, 1 for BE, 2 for none
-   */
-  constructor(i, bo) {
-    super("UTF-" + NAMES[i] + POSTFIX[bo]);
-    this.i = i;
-    this.bo = bo;
-  }
-  /**
-   * @override
-   * @param {!ns.DecoderOptions} [options]
-   * @return {!ns.CharsetDecoder}
-   */
-  // @ts-expect-error
-  newDecoder(options) {
-    return new DECODERS[this.i](!(options?.stripBOM ?? STRIP_BOM_DEFAULT), this.bo);
-  }
-  /**
-   * @override
-   * @param {!ns.EncoderOptions} [options]
-   * @return {!ns.CharsetEncoder}
-   */
-  // @ts-expect-error
-  newEncoder(options) {
-    return new ENCODERS[this.i](options?.addBOM ?? ADD_BOM_DEFAULT, this.i, this.bo);
-  }
+var byteLengthMaxUTF8 = (encodeState, op, text) => {
+  const state = (
+    /** @type {!EncodeStateUTF8} */
+    encodeState
+  );
+  return (state.doBOM ? 4 : 0) + text.length * 4;
 };
+var encoderOpUTF8 = {
+  createEncodeStateFn: createEncodeStateUTF8,
+  encodeIntoFn: encodeIntoUTF8,
+  byteLengthMaxFn: byteLengthMaxUTF8,
+  byteLengthFn: byteLengthDefault
+};
+var createDecodeStateUTF16 = (charsetCtx, options) => {
+  const ctx = (
+    /** @type {!UnicodeCharsetContext} */
+    charsetCtx
+  );
+  const noBOM = !(options.stripBOM ?? STRIP_BOM_DEFAULT);
+  const { bo } = ctx;
+  const state = {
+    decoder: new TextDecoder("UTF-16" + ["LE", "BE"][bo], { ignoreBOM: noBOM })
+  };
+  return state;
+};
+var decodeUTF16 = (decodeState, input) => {
+  const state = (
+    /** @type {!DecodeStateUTF16} */
+    decodeState
+  );
+  return state.decoder.decode(input, { stream: Boolean(input) });
+};
+var decoderOpUTF16 = {
+  createDecodeStateFn: createDecodeStateUTF16,
+  decodeFn: decodeUTF16
+};
+var createDecodeStateUTF32 = (charsetCtx, options) => {
+  const ctx = (
+    /** @type {!UnicodeCharsetContext} */
+    charsetCtx
+  );
+  const state = {
+    leftover: new Uint8Array(4),
+    leftoverSize: 0,
+    get32: ctx.bo ? get32BE : get32LE,
+    noBOM: !(options.stripBOM ?? STRIP_BOM_DEFAULT)
+  };
+  return state;
+};
+var decodeUTF32 = (decodeState, input) => {
+  const state = (
+    /** @type {!DecodeStateUTF32} */
+    decodeState
+  );
+  const { leftover, get32, noBOM } = state;
+  if (!input) {
+    if (state.leftoverSize) {
+      state.leftoverSize = 0;
+      return String.fromCharCode(REPLACEMENT_CHARACTER_CODE);
+    }
+    return "";
+  }
+  const dst = new Uint8Array(input.length + 4);
+  let i = 0;
+  let j = 0;
+  if (state.leftoverSize) {
+    while (state.leftoverSize < 4 && i < input.length) {
+      leftover[state.leftoverSize++] = input[i++];
+    }
+    if (state.leftoverSize < 4) {
+      return "";
+    }
+    j += appendCodePoint(dst, j, get32(leftover, 0));
+  }
+  const max = input.length - 3;
+  for (; i < max; i += 4) {
+    j += appendCodePoint(dst, j, get32(input, i));
+  }
+  state.leftoverSize = input.length - i;
+  if (state.leftoverSize) {
+    leftover.set(input.subarray(i));
+  }
+  return new TextDecoder("UTF-16", { ignoreBOM: noBOM }).decode(dst.subarray(0, j));
+};
+var decoderOpUTF32 = {
+  createDecodeStateFn: createDecodeStateUTF32,
+  decodeFn: decodeUTF32
+};
+var createEncodeStateUTF = (charsetCtx, options) => {
+  const { i, bo } = (
+    /** @type {!UnicodeCharsetContext} */
+    charsetCtx
+  );
+  const doBOM = options.addBOM ?? ADD_BOM_DEFAULT;
+  const state = {
+    doBOM,
+    appendBOM: doBOM,
+    sz: 1 << i + 1,
+    put: i ? bo ? put32BE : put32LE : bo ? put16BE : put16LE
+  };
+  return state;
+};
+var encodeIntoUTF = (encodeState, src, dst) => {
+  const state = (
+    /** @type {!EncodeStateUTF} */
+    encodeState
+  );
+  const { appendBOM, sz, put } = state;
+  let j = 0;
+  if (appendBOM) {
+    if (dst.length < sz) {
+      return { read: 0, written: 0 };
+    }
+    put(BOM_CHAR, 0, dst, j);
+    j += sz;
+    state.appendBOM = false;
+  }
+  const max = Math.min(src.length, dst.length - j & ~(sz - 1));
+  for (let i = 0; i < max; i++, j += sz) {
+    i += put(src, i, dst, j);
+  }
+  return { read: max, written: j };
+};
+var byteLengthMaxUTF = (encodeState, op, text) => {
+  const state = (
+    /** @type {!EncodeStateUTF} */
+    encodeState
+  );
+  return (state.doBOM ? state.sz : 0) + text.length * state.sz;
+};
+var byteLengthUTF = (encodeState, op, text) => {
+  const state = (
+    /** @type {!EncodeStateUTF} */
+    encodeState
+  );
+  if (state.sz === 4) {
+    return byteLengthDefault(state, op, text);
+  }
+  return byteLengthMaxUTF(state, op, text);
+};
+var encoderOpUTF = {
+  createEncodeStateFn: createEncodeStateUTF,
+  encodeIntoFn: encodeIntoUTF,
+  byteLengthMaxFn: byteLengthMaxUTF,
+  byteLengthFn: byteLengthUTF
+};
+var CHARSET_CONFIG = [
+  {
+    i: 16,
+    decoderOp: decoderOpUTF16,
+    encoderOp: encoderOpUTF
+  },
+  {
+    i: 32,
+    decoderOp: decoderOpUTF32,
+    encoderOp: encoderOpUTF
+  },
+  {
+    i: 8,
+    decoderOp: decoderOpUTF8,
+    encoderOp: encoderOpUTF8
+  }
+];
 var Unicode = class {
   /**
    * @param {number} i
    * @param {number} bo
    */
   constructor(i, bo) {
-    this.i = i;
-    this.bo = bo;
+    const cfg = CHARSET_CONFIG[i];
+    const ctx = { charsetName: "UTF-" + cfg.i + ["LE", "BE", ""][bo], i, bo };
+    this.encoding = createEncoding(ctx, cfg.decoderOp, cfg.encoderOp);
   }
   /**
    * @override
@@ -666,77 +923,191 @@ var Unicode = class {
    */
   // @ts-expect-error
   create() {
-    return new UnicodeCharset(this.i, this.bo);
+    return this.encoding;
   }
 };
 
 // dist/main.mjs
+var US_ASCII = new SBCS("US-ASCII", "?".repeat(128));
 var ISO_8859_1 = new SBCS("ISO-8859-1", "");
-var ISO_8859_2 = new SBCS("ISO-8859-2", "Ą˘Ł¤ĽŚ§¨ŠŞŤŹ­ŽŻ°ą˛ł´ľśˇ¸šşťź˝žżŔÁÂĂÄĹĆÇČÉĘËĚÍÎĎĐŃŇÓÔŐÖ×ŘŮÚŰÜÝŢßŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙");
-var ISO_8859_3 = new SBCS("ISO-8859-3", "Ħ˘£¤�Ĥ§¨İŞĞĴ­�Ż°ħ²³´µĥ·¸ışğĵ½�żÀÁÂ�ÄĊĈÇÈÉÊËÌÍÎÏ�ÑÒÓÔĠÖ×ĜÙÚÛÜŬŜßàáâ�äċĉçèéêëìíîï�ñòóôġö÷ĝùúûüŭŝ˙");
-var ISO_8859_4 = new SBCS("ISO-8859-4", "ĄĸŖ¤ĨĻ§¨ŠĒĢŦ­Ž¯°ą˛ŗ´ĩļˇ¸šēģŧŊžŋĀÁÂÃÄÅÆĮČÉĘËĖÍÎĪĐŅŌĶÔÕÖ×ØŲÚÛÜŨŪßāáâãäåæįčéęëėíîīđņōķôõö÷øųúûüũū˙");
-var ISO_8859_5 = new SBCS("ISO-8859-5", "ЁЂЃЄЅІЇЈЉЊЋЌ­ЎЏАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя№ёђѓєѕіїјљњћќ§ўџ");
-var ISO_8859_6 = new SBCS("ISO-8859-6", "���¤�������،­�������������؛���؟�ءآأؤإئابةتثجحخدذرزسشصضطظعغ�����ـفقكلمنهوىيًٌٍَُِّْ�������������");
-var ISO_8859_7 = new SBCS("ISO-8859-7", "΄΅Ά·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ�ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ�", "¡‘¢’¤€¥₯ªͺ®�¯―");
-var ISO_8859_8 = new SBCS("ISO-8859-8", "��������������������������������‗אבגדהוזחטיךכלםמןנסעףפץצקרשת��‎‏�", "¡�ª×º÷");
-var ISO_8859_9 = new SBCS("ISO-8859-9", "ışÿ", "ÐĞÝİÞŞðğ");
-var ISO_8859_10 = new SBCS("ISO-8859-10", "ĄĒĢĪĨĶ§ĻĐŠŦŽ­ŪŊ°ąēģīĩķ·ļđšŧž―ūŋĀÁÂÃÄÅÆĮČÉĘËĖÍÎÏÐŅŌÓÔÕÖŨØŲÚÛÜÝÞßāáâãäåæįčéęëėíîïðņōóôõöũøųúûüýþĸ");
-var ISO_8859_11 = new SBCS("ISO-8859-11", "กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู����฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛����");
-var ISO_8859_13 = new SBCS("ISO-8859-13", "æĄĮĀĆÄÅĘĒČÉŹĖĢĶĪĻŠŃŅÓŌÕÖ×ŲŁŚŪÜŻŽßąįāćäåęēčéźėģķīļšńņóōõö÷ųłśūüżž’", "¡”¥„¨ØªŖ¯Æ´“¸øºŗ");
-var ISO_8859_14 = new SBCS("ISO-8859-14", "Ḃḃ£ĊċḊ§Ẁ©ẂḋỲ­®ŸḞḟĠġṀṁ¶ṖẁṗẃṠỳẄẅṡÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏŴÑÒÓÔÕÖṪØÙÚÛÜÝŶßàáâãäåæçèéêëìíîïŵñòóôõöṫøùúûüýŷÿ");
+var ISO_8859_2 = new SBCS("ISO-8859-2", "Ą˘Ł ĽŚ  ŠŞŤŹ ŽŻ ą˛ł ľśˇ šşťź˝žżŔ  Ă ĹĆ Č Ę Ě  ĎĐŃŇ  Ő  ŘŮ Ű  Ţ ŕ  ă ĺć č ę ě  ďđńň  ő  řů ű  ţ˙");
+var ISO_8859_3 = new SBCS("ISO-8859-3", "Ħ˘  ?Ĥ  İŞĞĴ ?Ż ħ    ĥ  ışğĵ ?ż   ? ĊĈ         ?    Ġ  Ĝ    ŬŜ    ? ċĉ         ?    ġ  ĝ    ŭŝ˙");
+var ISO_8859_4 = new SBCS("ISO-8859-4", "ĄĸŖ ĨĻ  ŠĒĢŦ Ž  ą˛ŗ ĩļˇ šēģŧŊžŋĀ      ĮČ Ę Ė  ĪĐŅŌĶ     Ų   ŨŪ ā      įč ę ė  īđņōķ     ų   ũū˙");
+var ISO_8859_5 = new SBCS("ISO-8859-5", "ЁЂЃЄЅІЇЈЉЊЋЌ ЎЏАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя№ёђѓєѕіїјљњћќ§ўџ");
+var ISO_8859_6 = new SBCS("ISO-8859-6", "??? ???????، ?????????????؛???؟?ءآأؤإئابةتثجحخدذرزسشصضطظعغ?????ـفقكلمنهوىيًٌٍَُِّْ?????????????");
+var ISO_8859_7 = new SBCS("ISO-8859-7", "‘’ €₯    ͺ   ?―    ΄΅Ά ΈΉΊ Ό ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ?ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ?");
+var ISO_8859_8 = new SBCS("ISO-8859-8", "????????????????????????????????‗אבגדהוזחטיךכלםמןנסעףפץצקרשת??‎‏?", "¡?ª×º÷");
+var ISO_8859_9 = new SBCS("ISO-8859-9", "ış ", "ÐĞÝİÞŞðğ");
+var ISO_8859_10 = new SBCS("ISO-8859-10", "ĄĒĢĪĨĶ ĻĐŠŦŽ ŪŊ ąēģīĩķ ļđšŧž―ūŋĀ      ĮČ Ę Ė    ŅŌ    Ũ Ų      ā      įč ę ė    ņō    ũ ų     ĸ");
+var ISO_8859_11 = new SBCS("ISO-8859-11", "กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู????฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛????");
+var ISO_8859_13 = new SBCS("ISO-8859-13", "æĄĮĀĆ  ĘĒČ ŹĖĢĶĪĻŠŃŅ Ō   ŲŁŚŪ ŻŽ ąįāć  ęēč źėģķīļšńņ ō   ųłśū żž’", "¡”¥„¨ØªŖ¯Æ´“¸øºŗ");
+var ISO_8859_14 = new SBCS("ISO-8859-14", "Ḃḃ ĊċḊ Ẁ ẂḋỲ  ŸḞḟĠġṀṁ ṖẁṗẃṠỳẄẅṡ                Ŵ      Ṫ      Ŷ                 ŵ      ṫ      ŷ ");
 var ISO_8859_15 = new SBCS("ISO-8859-15", "", "¤€¦Š¨š´Ž¸ž¼Œ½œ¾Ÿ");
-var ISO_8859_16 = new SBCS("ISO-8859-16", "ĄąŁ€„Š§š©Ș«Ź­źŻ°±ČłŽ”¶·žčș»ŒœŸżÀÁÂĂÄĆÆÇÈÉÊËÌÍÎÏĐŃÒÓÔŐÖŚŰÙÚÛÜĘȚßàáâăäćæçèéêëìíîïđńòóôőöśűùúûüęțÿ");
-var CP037 = new SBCS("CP037", "	\v\f\r\b\n\x1B\x07  âäàáãåçñ¢.<(+|&éêëèíîïìß!$*);¬-/ÂÄÀÁÃÅÇÑ¦,%_>?øÉÊËÈÍÎÏÌ`:#@'=\"Øabcdefghi«»ðýþ±°jklmnopqrªºæ¸Æ¤µ~stuvwxyz¡¿ÐÝÞ®^£¥·©§¶¼½¾[]¯¨´×{ABCDEFGHI­ôöòóõ}JKLMNOPQR¹ûüùúÿ\\÷STUVWXYZ²ÔÖÒÓÕ0123456789³ÛÜÙÚ");
-var CP500 = new SBCS("CP500", "	\v\f\r\b\n\x1B\x07  âäàáãåçñ[.<(+!&éêëèíîïìß]$*);^-/ÂÄÀÁÃÅÇÑ¦,%_>?øÉÊËÈÍÎÏÌ`:#@'=\"Øabcdefghi«»ðýþ±°jklmnopqrªºæ¸Æ¤µ~stuvwxyz¡¿ÐÝÞ®¢£¥·©§¶¼½¾¬|¯¨´×{ABCDEFGHI­ôöòóõ}JKLMNOPQR¹ûüùúÿ\\÷STUVWXYZ²ÔÖÒÓÕ0123456789³ÛÜÙÚ");
-var CP875 = new SBCS("CP875", "	\v\f\r\b\n\x1B\x07 ΑΒΓΔΕΖΗΘΙ[.<(+!&ΚΛΜΝΞΟΠΡΣ]$*);^-/ΤΥΦΧΨΩΪΫ|,%_>?¨ΆΈΉ ΊΌΎΏ`:#@'=\"΅abcdefghiαβγδεζ°jklmnopqrηθικλμ´~stuvwxyzνξοπρσ£άέήϊίόύϋώςτυφχψ{ABCDEFGHI­ωΐΰ‘―}JKLMNOPQR±½�·’¦\\₯STUVWXYZ²§ͺ�«¬0123456789³©€�»");
-var CP1026 = new SBCS("CP1026", "	\v\f\r\b\n\x1B\x07  âäàáãå{ñÇ.<(+!&éêëèíîïìßĞİ*);^-/ÂÄÀÁÃÅ[Ñş,%_>?øÉÊËÈÍÎÏÌı:ÖŞ'=ÜØabcdefghi«»}`¦±°jklmnopqrªºæ¸Æ¤µöstuvwxyz¡¿]$@®¢£¥·©§¶¼½¾¬|¯¨´×çABCDEFGHI­ô~òóõğJKLMNOPQR¹û\\ùúÿü÷STUVWXYZ²Ô#ÒÓÕ0123456789³Û\"ÙÚ");
+var ISO_8859_16 = new SBCS("ISO-8859-16", "ĄąŁ€„Š š Ș Ź źŻ  ČłŽ”  žčș ŒœŸż   Ă Ć          ĐŃ   Ő ŚŰ    ĘȚ    ă ć          đń   ő śű    ęț ");
+var CP037 = new SBCS("CP037", "	\v\f\r\b\n\x1B\x07  âäàáãåçñ¢.<(+|&éêëèíîïìß!$*);¬-/ÂÄÀÁÃÅÇÑ¦,%_>?øÉÊËÈÍÎÏÌ`:#@'=\"Øabcdefghi«»ðýþ±°jklmnopqrªºæ¸Æ¤µ~stuvwxyz¡¿ÐÝÞ®^£¥·©§ ¼½¾[]¯¨´×{ABCDEFGHI­ôöòóõ}JKLMNOPQR¹ûüùúÿ\\÷STUVWXYZ²ÔÖÒÓÕ0123456789³ÛÜÙÚ");
+var CP424 = new SBCS("CP424", "	\v\f\r\b\n\x1B\x07 אבגדהוזחט¢.<(+|&יךכלםמןנס!$*);¬-/עףפץצקרש¦,%_>?�ת�� ���‗`:#@'=\"?abcdefghi«»???±°jklmnopqr???¸?¤µ~stuvwxyz?????®^£¥·©§ ¼½¾[]¯¨´×{ABCDEFGHI­?????}JKLMNOPQR¹?????\\÷STUVWXYZ²?????0123456789³????");
+var CP500 = new SBCS("CP500", "	\v\f\r\b\n\x1B\x07  âäàáãåçñ[.<(+!&éêëèíîïìß]$*);^-/ÂÄÀÁÃÅÇÑ¦,%_>?øÉÊËÈÍÎÏÌ`:#@'=\"Øabcdefghi«»ðýþ±°jklmnopqrªºæ¸Æ¤µ~stuvwxyz¡¿ÐÝÞ®¢£¥·©§ ¼½¾¬|¯¨´×{ABCDEFGHI­ôöòóõ}JKLMNOPQR¹ûüùúÿ\\÷STUVWXYZ²ÔÖÒÓÕ0123456789³ÛÜÙÚ");
+var CP875 = new SBCS("CP875", "	\v\f\r\b\n\x1B\x07 ΑΒΓΔΕΖΗΘΙ[.<(+!&ΚΛΜΝΞΟΠΡΣ]$*);^-/ΤΥΦΧΨΩΪΫ|,%_>?¨ΆΈΉ ΊΌΎΏ`:#@'=\"΅abcdefghiαβγδεζ°jklmnopqrηθικλμ´~stuvwxyzνξοπρσ£άέήϊίόύϋώςτυφχψ{ABCDEFGHI­ωΐΰ‘―}JKLMNOPQR±½?·’¦\\₯STUVWXYZ²§ͺ?«¬0123456789³©€?»");
+var CP1026 = new SBCS("CP1026", "	\v\f\r\b\n\x1B\x07  âäàáãå{ñÇ.<(+!&éêëèíîïìßĞİ*);^-/ÂÄÀÁÃÅ[Ñş,%_>?øÉÊËÈÍÎÏÌı:ÖŞ'=ÜØabcdefghi«»}`¦±°jklmnopqrªºæ¸Æ¤µöstuvwxyz¡¿]$@®¢£¥·©§ ¼½¾¬|¯¨´×çABCDEFGHI­ô~òóõğJKLMNOPQR¹û\\ùúÿü÷STUVWXYZ²Ô#ÒÓÕ0123456789³Û\"ÙÚ");
 var CP437 = new SBCS("CP437", "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ");
 var CP737 = new SBCS("CP737", "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρσςτυφχψ░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀ωάέήϊίόύϋώΆΈΉΊΌΎΏ±≥≤ΪΫ÷≈°∙·√ⁿ²■ ");
 var CP775 = new SBCS("CP775", "ĆüéāäģåćłēŖŗīŹÄÅÉæÆōöĢ¢ŚśÖÜø£Ø×¤ĀĪóŻżź”¦©®¬½¼Ł«»░▒▓│┤ĄČĘĖ╣║╗╝ĮŠ┐└┴┬├─┼ŲŪ╚╔╩╦╠═╬Žąčęėįšųūž┘┌█▄▌▐▀ÓßŌŃõÕµńĶķĻļņĒŅ’­±“¾¶§÷„°∙·¹³²■ ");
 var CP850 = new SBCS("CP850", "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø×ƒáíóúñÑªº¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ðÐÊËÈıÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµþÞÚÛÙýÝ¯´­±‗¾¶§÷¸°¨·¹³²■ ");
 var CP852 = new SBCS("CP852", "ÇüéâäůćçłëŐőîŹÄĆÉĹĺôöĽľŚśÖÜŤťŁ×čáíóúĄąŽžĘę¬źČş«»░▒▓│┤ÁÂĚŞ╣║╗╝Żż┐└┴┬├─┼Ăă╚╔╩╦╠═╬¤đĐĎËďŇÍÎě┘┌█▄ŢŮ▀ÓßÔŃńňŠšŔÚŕŰýÝţ´­˝˛ˇ˘§÷¸°¨˙űŘř■ ");
 var CP855 = new SBCS("CP855", "ђЂѓЃёЁєЄѕЅіІїЇјЈљЉњЊћЋќЌўЎџЏюЮъЪаАбБцЦдДеЕфФгГ«»░▒▓│┤хХиИ╣║╗╝йЙ┐└┴┬├─┼кК╚╔╩╦╠═╬¤лЛмМнНоОп┘┌█▄Пя▀ЯрРсСтТуУжЖвВьЬ№­ыЫзЗшШэЭщЩчЧ§■ ");
-var CP857 = new SBCS("CP857", "ÇüéâäàåçêëèïîıÄÅÉæÆôöòûùİÖÜø£ØŞşáíóúñÑĞğ¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ºªÊËÈ�ÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµ�×ÚÛÙìÿ¯´­±�¾¶§÷¸°¨·¹³²■ ");
+var CP857 = new SBCS("CP857", "ÇüéâäàåçêëèïîıÄÅÉæÆôöòûùİÖÜø£ØŞşáíóúñÑĞğ¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ºªÊËÈ?ÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµ?×ÚÛÙ ÿ¯´­±?¾¶§÷¸°¨·¹³²■ ");
 var CP860 = new SBCS("CP860", "ÇüéâãàÁçêÊèÍÔìÃÂÉÀÈôõòÚùÌÕÜ¢£Ù₧ÓáíóúñÑªº¿Ò¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ");
 var CP861 = new SBCS("CP861", "ÇüéâäàåçêëèÐðÞÄÅÉæÆôöþûÝýÖÜø£Ø₧ƒáíóúÁÍÓÚ¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ");
 var CP862 = new SBCS("CP862", "אבגדהוזחטיךכלםמןנסעףפץצקרשת¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ");
 var CP863 = new SBCS("CP863", "ÇüéâÂà¶çêëèïî‗À§ÉÈÊôËÏûù¤ÔÜ¢£ÙÛƒ¦´óú¨¸³¯Î⌐¬½¼¾«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ");
-var CP864 = new SBCS("CP864", "°·∙√▒─│┼┤┬├┴┐┌└┘β∞φ±½¼≈«»ﻷﻸ��ﻻﻼ� ­ﺂ£¤ﺄ��ﺎﺏﺕﺙ،ﺝﺡﺥ٠١٢٣٤٥٦٧٨٩ﻑ؛ﺱﺵﺹ؟¢ﺀﺁﺃﺅﻊﺋﺍﺑﺓﺗﺛﺟﺣﺧﺩﺫﺭﺯﺳﺷﺻﺿﻁﻅﻋﻏ¦¬÷×ﻉـﻓﻗﻛﻟﻣﻧﻫﻭﻯﻳﺽﻌﻎﻍﻡﹽّﻥﻩﻬﻰﻲﻐﻕﻵﻶﻝﻙﻱ■�", "%٪");
+var CP864 = new SBCS("CP864", "°·∙√▒─│┼┤┬├┴┐┌└┘β∞φ±½¼≈«»ﻷﻸ??ﻻﻼ? ­ﺂ  ﺄ??ﺎﺏﺕﺙ،ﺝﺡﺥ٠١٢٣٤٥٦٧٨٩ﻑ؛ﺱﺵﺹ؟¢ﺀﺁﺃﺅﻊﺋﺍﺑﺓﺗﺛﺟﺣﺧﺩﺫﺭﺯﺳﺷﺻﺿﻁﻅﻋﻏ¦¬÷×ﻉـﻓﻗﻛﻟﻣﻧﻫﻭﻯﻳﺽﻌﻎﻍﻡﹽّﻥﻩﻬﻰﻲﻐﻕﻵﻶﻝﻙﻱ■?", "%٪");
 var CP865 = new SBCS("CP865", "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø₧ƒáíóúñÑªº¿⌐¬½¼¡«¤░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ");
 var CP866 = new SBCS("CP866", "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмноп░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀рстуфхцчшщъыьэюяЁёЄєЇїЎў°∙·√№¤■ ");
-var CP869 = new SBCS("CP869", "������Ά�·¬¦‘’Έ―ΉΊΪΌ��ΎΫ©Ώ²³ά£έήίϊΐόύΑΒΓΔΕΖΗ½ΘΙ«»░▒▓│┤ΚΛΜΝ╣║╗╝ΞΟ┐└┴┬├─┼ΠΡ╚╔╩╦╠═╬ΣΤΥΦΧΨΩαβγ┘┌█▄δε▀ζηθικλμνξοπρσςτ΄­±υφχ§ψ΅°¨ωϋΰώ■ ");
-var CP874 = new SBCS("CP874", "€����…�����������‘’“”•–—�������� กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู����฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛����");
-var CP1250 = new SBCS("CP1250", "€�‚�„…†‡�‰Š‹ŚŤŽŹ�‘’“”•–—�™š›śťžź ˇ˘Ł¤Ą¦§¨©Ş«¬­®Ż°±˛ł´µ¶·¸ąş»Ľ˝ľżŔÁÂĂÄĹĆÇČÉĘËĚÍÎĎĐŃŇÓÔŐÖ×ŘŮÚŰÜÝŢßŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙");
-var CP1251 = new SBCS("CP1251", "ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—�™љ›њќћџ ЎўЈ¤Ґ¦§Ё©Є«¬­®Ї°±Ііґµ¶·ё№є»јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя");
-var CP1252 = new SBCS("CP1252", "€�‚ƒ„…†‡ˆ‰Š‹Œ�Ž��‘’“”•–—˜™š›œ�žŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ");
-var CP1253 = new SBCS("CP1253", "€�‚ƒ„…†‡�‰�‹�����‘’“”•–—�™�›���� ΅Ά£¤¥¦§¨©�«¬­®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ�ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ�");
-var CP1254 = new SBCS("CP1254", "€�‚ƒ„…†‡ˆ‰Š‹Œ����‘’“”•–—˜™š›œ��Ÿ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏĞÑÒÓÔÕÖ×ØÙÚÛÜİŞßàáâãäåæçèéêëìíîïğñòóôõö÷øùúûüışÿ");
-var CP1255 = new SBCS("CP1255", "€�‚ƒ„…†‡ˆ‰�‹�����‘’“”•–—˜™�›���� ¡¢£₪¥¦§¨©×«¬­®¯°±²³´µ¶·¸¹÷»¼½¾¿ְֱֲֳִֵֶַָֹֺֻּֽ־ֿ׀ׁׂ׃װױײ׳״�������אבגדהוזחטיךכלםמןנסעףפץצקרשת��‎‏�");
-var CP1256 = new SBCS("CP1256", "€پ‚ƒ„…†‡ˆ‰ٹ‹Œچژڈگ‘’“”•–—ک™ڑ›œ‌‍ں ،¢£¤¥¦§¨©ھ«¬­®¯°±²³´µ¶·¸¹؛»¼½¾؟ہءآأؤإئابةتثجحخدذرزسشصض×طظعغـفقكàلâمنهوçèéêëىيîïًٌٍَôُِ÷ّùْûü‎‏ے");
-var CP1257 = new SBCS("CP1257", "€�‚�„…†‡�‰�‹�¨ˇ¸�‘’“”•–—�™�›�¯˛� �¢£¤�¦§Ø©Ŗ«¬­®Æ°±²³´µ¶·ø¹ŗ»¼½¾æĄĮĀĆÄÅĘĒČÉŹĖĢĶĪĻŠŃŅÓŌÕÖ×ŲŁŚŪÜŻŽßąįāćäåęēčéźėģķīļšńņóōõö÷ųłśūüżž˙");
-var CP1258 = new SBCS("CP1258", "€�‚ƒ„…†‡ˆ‰�‹Œ����‘’“”•–—˜™�›œ��Ÿ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂĂÄÅÆÇÈÉÊË̀ÍÎÏĐÑ̉ÓÔƠÖ×ØÙÚÛÜỮßàáâăäåæçèéêë́íîïđṇ̃óôơö÷øùúûüư₫ÿ");
-var MAC_CYRILLIC = new SBCS("MAC-CYRILLIC", "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ†°¢£§•¶І®©™Ђђ≠Ѓѓ∞±≤≥іµ∂ЈЄєЇїЉљЊњјЅ¬√ƒ≈∆«»… ЋћЌќѕ–—“”‘’÷„ЎўЏџ№Ёёяабвгдежзийклмнопрстуфхцчшщъыьэю¤");
-var MAC_GREEK = new SBCS("MAC-GREEK", "Ä¹²É³ÖÜ΅àâä΄¨çéèêë£™îï•½‰ôö¦­ùûü†ΓΔΘΛΞΠß®©ΣΪ§≠°·Α±≤≥¥ΒΕΖΗΙΚΜΦΫΨΩάΝ¬ΟΡ≈Τ«»… ΥΧΆΈœ–―“”‘’÷ΉΊΌΎέήίόΏύαβψδεφγηιξκλμνοπώρστθωςχυζϊϋΐΰ�");
-var MAC_ICELAND = new SBCS("MAC-ICELAND", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûüÝ°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄¤ÐðÞþý·‚„‰ÂÊÁËÈÍÎÏÌÓÔ�ÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ");
-var MAC_LATIN2 = new SBCS("MAC-LATIN2", "ÄĀāÉĄÖÜáąČäčĆćéŹźĎíďĒēĖóėôöõúĚěü†°Ę£§•¶ß®©™ę¨≠ģĮįĪ≤≥īĶ∂∑łĻļĽľĹĺŅņŃ¬√ńŇ∆«»… ňŐÕőŌ–—“”‘’÷◊ōŔŕŘ‹›řŖŗŠ‚„šŚśÁŤťÍŽžŪÓÔūŮÚůŰűŲųÝýķŻŁżĢˇ");
-var MAC_ROMAN = new SBCS("MAC-ROMAN", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄¤‹›ﬁﬂ‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔ�ÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ");
-var MAC_TURKISH = new SBCS("MAC-TURKISH", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸĞğİıŞş‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔ�ÒÚÛÙ�ˆ˜¯˘˙˚¸˝˛ˇ");
+var CP869 = new SBCS("CP869", "??????Ά?·¬¦‘’Έ―ΉΊΪΌ??ΎΫ©Ώ²³ά£έήίϊΐόύΑΒΓΔΕΖΗ½ΘΙ«»░▒▓│┤ΚΛΜΝ╣║╗╝ΞΟ┐└┴┬├─┼ΠΡ╚╔╩╦╠═╬ΣΤΥΦΧΨΩαβγ┘┌█▄δε▀ζηθικλμνξοπρσςτ΄­±υφχ§ψ΅°¨ωϋΰώ■ ");
+var CP874 = new SBCS("CP874", "€????…???????????‘’“”•–—???????? กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู????฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛????");
+var CP1250 = new SBCS("CP1250", "€?‚?„…†‡?‰Š‹ŚŤŽŹ?‘’“”•–—?™š›śťžź ˇ˘Ł Ą    Ş    Ż  ˛ł     ąş Ľ˝ľżŔ  Ă ĹĆ Č Ę Ě  ĎĐŃŇ  Ő  ŘŮ Ű  Ţ ŕ  ă ĺć č ę ě  ďđńň  ő  řů ű  ţ˙");
+var CP1251 = new SBCS("CP1251", "ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—?™љ›њќћџ ЎўЈ Ґ  Ё Є    Ї  Ііґ   ё№є јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя");
+var CP1252 = new SBCS("CP1252", "€?‚ƒ„…†‡ˆ‰Š‹Œ?Ž??‘’“”•–—˜™š›œ?žŸ                                                                                                ");
+var CP1253 = new SBCS("CP1253", "€?‚ƒ„…†‡?‰?‹?????‘’“”•–—?™?›???? ΅Ά       ?    ―    ΄   ΈΉΊ Ό ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ?ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ?");
+var CP1254 = new SBCS("CP1254", "€?‚ƒ„…†‡ˆ‰Š‹Œ????‘’“”•–—˜™š›œ??Ÿ                                                Ğ            İŞ                 ğ            ış ");
+var CP1255 = new SBCS("CP1255", "€?‚ƒ„…†‡ˆ‰?‹?????‘’“”•–—˜™?›????    ₪     ×               ÷     ְֱֲֳִֵֶַָֹֺֻּֽ־ֿ׀ׁׂ׃װױײ׳״???????אבגדהוזחטיךכלםמןנסעףפץצקרשת??‎‏?");
+var CP1256 = new SBCS("CP1256", "€پ‚ƒ„…†‡ˆ‰ٹ‹Œچژڈگ‘’“”•–—ک™ڑ›œ‌‍ں ،        ھ               ؛    ؟ہءآأؤإئابةتثجحخدذرزسشصض طظعغـفقك ل منهو     ىي  ًٌٍَ ُِ ّ ْ  ‎‏ے");
+var CP1257 = new SBCS("CP1257", "€?‚?„…†‡?‰?‹?¨ˇ¸?‘’“”•–—?™?›?¯˛? ?   ?  Ø Ŗ    Æ        ø ŗ    æĄĮĀĆ  ĘĒČ ŹĖĢĶĪĻŠŃŅ Ō   ŲŁŚŪ ŻŽ ąįāć  ęēč źėģķīļšńņ ō   ųłśū żž˙");
+var CP1258 = new SBCS("CP1258", "€?‚ƒ„…†‡ˆ‰?‹Œ????‘’“”•–—˜™?›œ??Ÿ                                   Ă        ̀   Đ ̉  Ơ       Ữ    ă        ́   đ ̣  ơ       ư₫ ");
+var MAC_CYRILLIC = new SBCS("MAC-CYRILLIC", "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ†°  §•¶І® ™Ђђ≠Ѓѓ∞ ≤≥і ∂ЈЄєЇїЉљЊњјЅ¬√ƒ≈∆«»… ЋћЌќѕ–—“”‘’÷„ЎўЏџ№Ёёяабвгдежзийклмнопрстуфхцчшщъыьэю¤");
+var MAC_GREEK = new SBCS("MAC-GREEK", "Ä¹²É³ÖÜ΅àâä΄¨çéèêë£™îï•½‰ôö¦­ùûü†ΓΔΘΛΞΠß® ΣΪ§≠°·Α ≤≥¥ΒΕΖΗΙΚΜΦΫΨΩάΝ¬ΟΡ≈Τ«»… ΥΧΆΈœ–―“”‘’÷ΉΊΌΎέήίόΏύαβψδεφγηιξκλμνοπώρστθωςχυζϊϋΐΰ?");
+var MAC_ICELAND = new SBCS("MAC-ICELAND", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûüÝ°  §•¶ß® ™´¨≠ÆØ∞ ≤≥¥ ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄¤Ðð þý·‚„‰ÂÊÁËÈÍÎÏÌÓÔ?ÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ");
+var MAC_LATIN2 = new SBCS("MAC-LATIN2", "ÄĀāÉĄÖÜáąČäčĆćéŹźĎíďĒēĖóėôöõúĚěü†°Ę §•¶ß® ™ę¨≠ģĮįĪ≤≥īĶ∂∑łĻļĽľĹĺŅņŃ¬√ńŇ∆«»… ňŐÕőŌ–—“”‘’÷◊ōŔŕŘ‹›řŖŗŠ‚„šŚśÁŤťÍŽžŪÓÔūŮÚůŰűŲųÝýķŻŁżĢˇ");
+var MAC_ROMAN = new SBCS("MAC-ROMAN", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°  §•¶ß® ™´¨≠ÆØ∞ ≤≥¥ ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄¤‹›ﬁﬂ‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔ?ÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ");
+var MAC_TURKISH = new SBCS("MAC-TURKISH", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°  §•¶ß® ™´¨≠ÆØ∞ ≤≥¥ ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸĞğİıŞş‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔ?ÒÚÛÙ?ˆ˜¯˘˙˚¸˝˛ˇ");
 var ATARIST = new SBCS("ATARIST", "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥ßƒáíóúñÑªº¿⌐¬½¼¡«»ãõØøœŒÀÃÕ¨´†¶©®™ĳĲאבגדהוזחטיכלמנסעפצקרשתןךםףץ§∧∞αβΓπΣσµτΦΘΩδ∮φ∈∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²³¯");
-var CP424 = new SBCS("CP424", "	\v\f\r\b\n\x1B\x07 אבגדהוזחט¢.<(+|&יךכלםמןנס!$*);¬-/עףפץצקרש¦,%_>?�ת�� ���‗`:#@'=\"�abcdefghi«»���±°jklmnopqr���¸�¤µ~stuvwxyz�����®^£¥·©§¶¼½¾[]¯¨´×{ABCDEFGHI­�����}JKLMNOPQR¹�����\\÷STUVWXYZ²�����0123456789³����");
-var CP856 = new SBCS("CP856", "אבגדהוזחטיךכלםמןנסעףפץצקרשת�£�×����������®¬½¼�«»░▒▓│┤���©╣║╗╝¢¥┐└┴┬├─┼��╚╔╩╦╠═╬¤���������┘┌█▄¦�▀������µ�������¯´­±‗¾¶§÷¸°¨·¹³²■ ");
-var CP1006 = new SBCS("CP1006", "۰۱۲۳۴۵۶۷۸۹،؛­؟ﺁﺍﺎﺎﺏﺑﭖﭘﺓﺕﺗﭦﭨﺙﺛﺝﺟﭺﭼﺡﺣﺥﺧﺩﮄﺫﺭﮌﺯﮊﺱﺳﺵﺷﺹﺻﺽﺿﻁﻅﻉﻊﻋﻌﻍﻎﻏﻐﻑﻓﻕﻗﻙﻛﮒﮔﻝﻟﻠﻡﻣﮞﻥﻧﺅﻭﮦﮨﮩﮪﺀﺉﺊﺋﻱﻲﻳﮰﮮﹼﹽ");
+var CP856 = new SBCS("CP856", "אבגדהוזחטיךכלםמןנסעףפץצקרשת?£?×??????????®¬½¼?«»░▒▓│┤???©╣║╗╝¢¥┐└┴┬├─┼??╚╔╩╦╠═╬¤?????????┘┌█▄¦?▀??????µ???????¯´­±‗¾¶§÷¸°¨·¹³²■ ");
+var CP1006 = new SBCS("CP1006", "۰۱۲۳۴۵۶۷۸۹،؛ ؟ﺁﺍﺎﺎﺏﺑﭖﭘﺓﺕﺗﭦﭨﺙﺛﺝﺟﭺﭼﺡﺣﺥﺧﺩﮄﺫﺭﮌﺯﮊﺱﺳﺵﺷﺹﺻﺽﺿﻁﻅﻉﻊﻋﻌﻍﻎﻏﻐﻑﻓﻕﻗﻙﻛﮒﮔﻝﻟﻠﻡﻣﮞﻥﻧﺅﻭﮦﮨﮩﮪﺀﺉﺊﺋﻱﻲﻳﮰﮮﹼﹽ");
 var KOI8_R = new SBCS("KOI8-R", "─│┌┐└┘├┤┬┴┼▀▄█▌▐░▒▓⌠■∙√≈≤≥ ⌡°²·÷═║╒ё╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡Ё╢╣╤╥╦╧╨╩╪╫╬©юабцдефгхийклмнопярстужвьызшэщчъЮАБЦДЕФГХИЙКЛМНОПЯРСТУЖВЬЫЗШЭЩЧЪ");
 var KOI8_U = new SBCS("KOI8-U", "─│┌┐└┘├┤┬┴┼▀▄█▌▐░▒▓⌠■∙√≈≤≥ ⌡°²·÷═║╒ёє╔ії╗╘╙╚╛ґ╝╞╟╠╡ЁЄ╣ІЇ╦╧╨╩╪Ґ╬©юабцдефгхийклмнопярстужвьызшэщчъЮАБЦДЕФГХИЙКЛМНОПЯРСТУЖВЬЫЗШЭЩЧЪ");
-var KZ1048 = new SBCS("KZ1048", "ЂЃ‚ѓ„…†‡€‰Љ‹ЊҚҺЏђ‘’“”•–—�™љ›њқһџ ҰұӘ¤Ө¦§Ё©Ғ«¬­®Ү°±Ііөµ¶·ё№ғ»әҢңүАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя");
-var NEXTSTEP = new SBCS("NEXTSTEP", " ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝÞµ×÷©¡¢£⁄¥ƒ§¤’“«‹›ﬁﬂ®–†‡·¦¶•‚„”»…‰¬¿¹ˋ´ˆ˜¯˘˙¨²˚¸³˝˛ˇ—±¼½¾àáâãäåçèéêëìÆíªîïðñŁØŒºòóôõöæùúûıüýłøœßþÿ��");
-var US_ASCII = new SBCS("US-ASCII", "�".repeat(128));
+var KZ1048 = new SBCS("KZ1048", "ЂЃ‚ѓ„…†‡€‰Љ‹ЊҚҺЏђ‘’“”•–—?™љ›њқһџ ҰұӘ Ө  Ё Ғ    Ү  Ііө   ё№ғ әҢңүАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя");
+var NEXTSTEP = new SBCS("NEXTSTEP", " ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝÞµ×÷©   ⁄ ƒ ¤’“ ‹›ﬁﬂ®–†‡·¦ •‚„” …‰¬ ¹ˋ´ˆ˜¯˘˙¨²˚¸³˝˛ˇ—±¼½¾àáâãäåçèéêëìÆíªîïðñŁØŒºòóôõöæùúûıüýłøœßþÿ??");
+var JIS_0201 = new SBCS("JIS-0201", "‾?????????????????????????????????｡｢｣､･ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝﾞﾟ????????????????????????????????", "\\¥");
+var SHIFT_JIS = new DBCS("SHIFT-JIS", JIS_0201, [
+  ["8140", "　、。，．・：；？！゛゜´｀¨＾￣＿ヽヾゝゞ〃仝々〆〇ー―‐／\\〜‖｜…‥‘’“”（）〔〕［］｛｝〈", 9, "＋−±×"],
+  ["8180", "÷＝≠＜＞≦≧∞∴♂♀°′″℃￥＄¢£％＃＆＊＠§☆★○●◎◇◆□■△▲▽▼※〒→←↑↓〓"],
+  ["81b8", "∈∋⊆⊇⊂⊃∪∩"],
+  ["81c8", "∧∨¬⇒⇔∀∃"],
+  ["81da", "∠⊥⌒∂∇≡≒≪≫√∽∝∵∫∬"],
+  ["81f0", "Å‰♯♭♪†‡¶"],
+  ["81fc", "◯"],
+  ["824f", "０", 9],
+  ["8260", "Ａ", 25],
+  ["8281", "ａ", 25],
+  ["829f", "ぁ", 82],
+  ["8340", "ァ", 62],
+  ["8380", "ム", 22],
+  ["839f", "Α", 16, "Σ", 6],
+  ["83bf", "α", 16, "σ", 6],
+  ["8440", "А", 5, "ЁЖ", 25],
+  ["8470", "а", 5, "ёж", 7],
+  ["8480", "о", 17],
+  ["849f", "─│┌┐┘└├┬┤┴┼━┃┏┓┛┗┣┳┫┻╋┠┯┨┷┿┝┰┥┸╂"],
+  ["889f", "亜唖娃阿哀愛挨姶逢葵茜穐悪握渥旭葦芦鯵梓圧斡扱宛姐虻飴絢綾鮎或粟袷安庵按暗案闇鞍杏以伊位依偉囲夷委威尉惟意慰易椅為畏異移維緯胃萎衣謂違遺医井亥域育郁磯一壱溢逸稲茨芋鰯允印咽員因姻引飲淫胤蔭"],
+  ["8940", "院陰隠韻吋右宇烏羽迂雨卯鵜窺丑碓臼渦嘘唄欝蔚鰻姥厩浦瓜閏噂云運雲荏餌叡営嬰影映曳栄永泳洩瑛盈穎頴英衛詠鋭液疫益駅悦謁越閲榎厭円"],
+  ["8980", "園堰奄宴延怨掩援沿演炎焔煙燕猿縁艶苑薗遠鉛鴛塩於汚甥凹央奥往応押旺横欧殴王翁襖鴬鴎黄岡沖荻億屋憶臆桶牡乙俺卸恩温穏音下化仮何伽価佳加可嘉夏嫁家寡科暇果架歌河火珂禍禾稼箇花苛茄荷華菓蝦課嘩貨迦過霞蚊俄峨我牙画臥芽蛾賀雅餓駕介会解回塊壊廻快怪悔恢懐戒拐改"],
+  ["8a40", "魁晦械海灰界皆絵芥蟹開階貝凱劾外咳害崖慨概涯碍蓋街該鎧骸浬馨蛙垣柿蛎鈎劃嚇各廓拡撹格核殻獲確穫覚角赫較郭閣隔革学岳楽額顎掛笠樫"],
+  ["8a80", "橿梶鰍潟割喝恰括活渇滑葛褐轄且鰹叶椛樺鞄株兜竃蒲釜鎌噛鴨栢茅萱粥刈苅瓦乾侃冠寒刊勘勧巻喚堪姦完官寛干幹患感慣憾換敢柑桓棺款歓汗漢澗潅環甘監看竿管簡緩缶翰肝艦莞観諌貫還鑑間閑関陥韓館舘丸含岸巌玩癌眼岩翫贋雁頑顔願企伎危喜器基奇嬉寄岐希幾忌揮机旗既期棋棄"],
+  ["8b40", "機帰毅気汽畿祈季稀紀徽規記貴起軌輝飢騎鬼亀偽儀妓宜戯技擬欺犠疑祇義蟻誼議掬菊鞠吉吃喫桔橘詰砧杵黍却客脚虐逆丘久仇休及吸宮弓急救"],
+  ["8b80", "朽求汲泣灸球究窮笈級糾給旧牛去居巨拒拠挙渠虚許距鋸漁禦魚亨享京供侠僑兇競共凶協匡卿叫喬境峡強彊怯恐恭挟教橋況狂狭矯胸脅興蕎郷鏡響饗驚仰凝尭暁業局曲極玉桐粁僅勤均巾錦斤欣欽琴禁禽筋緊芹菌衿襟謹近金吟銀九倶句区狗玖矩苦躯駆駈駒具愚虞喰空偶寓遇隅串櫛釧屑屈"],
+  ["8c40", "掘窟沓靴轡窪熊隈粂栗繰桑鍬勲君薫訓群軍郡卦袈祁係傾刑兄啓圭珪型契形径恵慶慧憩掲携敬景桂渓畦稽系経継繋罫茎荊蛍計詣警軽頚鶏芸迎鯨"],
+  ["8c80", "劇戟撃激隙桁傑欠決潔穴結血訣月件倹倦健兼券剣喧圏堅嫌建憲懸拳捲検権牽犬献研硯絹県肩見謙賢軒遣鍵険顕験鹸元原厳幻弦減源玄現絃舷言諺限乎個古呼固姑孤己庫弧戸故枯湖狐糊袴股胡菰虎誇跨鈷雇顧鼓五互伍午呉吾娯後御悟梧檎瑚碁語誤護醐乞鯉交佼侯候倖光公功効勾厚口向"],
+  ["8d40", "后喉坑垢好孔孝宏工巧巷幸広庚康弘恒慌抗拘控攻昂晃更杭校梗構江洪浩港溝甲皇硬稿糠紅紘絞綱耕考肯肱腔膏航荒行衡講貢購郊酵鉱砿鋼閤降"],
+  ["8d80", "項香高鴻剛劫号合壕拷濠豪轟麹克刻告国穀酷鵠黒獄漉腰甑忽惚骨狛込此頃今困坤墾婚恨懇昏昆根梱混痕紺艮魂些佐叉唆嵯左差査沙瑳砂詐鎖裟坐座挫債催再最哉塞妻宰彩才採栽歳済災采犀砕砦祭斎細菜裁載際剤在材罪財冴坂阪堺榊肴咲崎埼碕鷺作削咋搾昨朔柵窄策索錯桜鮭笹匙冊刷"],
+  ["8e40", "察拶撮擦札殺薩雑皐鯖捌錆鮫皿晒三傘参山惨撒散桟燦珊産算纂蚕讃賛酸餐斬暫残仕仔伺使刺司史嗣四士始姉姿子屍市師志思指支孜斯施旨枝止"],
+  ["8e80", "死氏獅祉私糸紙紫肢脂至視詞詩試誌諮資賜雌飼歯事似侍児字寺慈持時次滋治爾璽痔磁示而耳自蒔辞汐鹿式識鴫竺軸宍雫七叱執失嫉室悉湿漆疾質実蔀篠偲柴芝屡蕊縞舎写射捨赦斜煮社紗者謝車遮蛇邪借勺尺杓灼爵酌釈錫若寂弱惹主取守手朱殊狩珠種腫趣酒首儒受呪寿授樹綬需囚収周"],
+  ["8f40", "宗就州修愁拾洲秀秋終繍習臭舟蒐衆襲讐蹴輯週酋酬集醜什住充十従戎柔汁渋獣縦重銃叔夙宿淑祝縮粛塾熟出術述俊峻春瞬竣舜駿准循旬楯殉淳"],
+  ["8f80", "準潤盾純巡遵醇順処初所暑曙渚庶緒署書薯藷諸助叙女序徐恕鋤除傷償勝匠升召哨商唱嘗奨妾娼宵将小少尚庄床廠彰承抄招掌捷昇昌昭晶松梢樟樵沼消渉湘焼焦照症省硝礁祥称章笑粧紹肖菖蒋蕉衝裳訟証詔詳象賞醤鉦鍾鐘障鞘上丈丞乗冗剰城場壌嬢常情擾条杖浄状畳穣蒸譲醸錠嘱埴飾"],
+  ["9040", "拭植殖燭織職色触食蝕辱尻伸信侵唇娠寝審心慎振新晋森榛浸深申疹真神秦紳臣芯薪親診身辛進針震人仁刃塵壬尋甚尽腎訊迅陣靭笥諏須酢図厨"],
+  ["9080", "逗吹垂帥推水炊睡粋翠衰遂酔錐錘随瑞髄崇嵩数枢趨雛据杉椙菅頗雀裾澄摺寸世瀬畝是凄制勢姓征性成政整星晴棲栖正清牲生盛精聖声製西誠誓請逝醒青静斉税脆隻席惜戚斥昔析石積籍績脊責赤跡蹟碩切拙接摂折設窃節説雪絶舌蝉仙先千占宣専尖川戦扇撰栓栴泉浅洗染潜煎煽旋穿箭線"],
+  ["9140", "繊羨腺舛船薦詮賎践選遷銭銑閃鮮前善漸然全禅繕膳糎噌塑岨措曾曽楚狙疏疎礎祖租粗素組蘇訴阻遡鼠僧創双叢倉喪壮奏爽宋層匝惣想捜掃挿掻"],
+  ["9180", "操早曹巣槍槽漕燥争痩相窓糟総綜聡草荘葬蒼藻装走送遭鎗霜騒像増憎臓蔵贈造促側則即息捉束測足速俗属賊族続卒袖其揃存孫尊損村遜他多太汰詑唾堕妥惰打柁舵楕陀駄騨体堆対耐岱帯待怠態戴替泰滞胎腿苔袋貸退逮隊黛鯛代台大第醍題鷹滝瀧卓啄宅托択拓沢濯琢託鐸濁諾茸凧蛸只"],
+  ["9240", "叩但達辰奪脱巽竪辿棚谷狸鱈樽誰丹単嘆坦担探旦歎淡湛炭短端箪綻耽胆蛋誕鍛団壇弾断暖檀段男談値知地弛恥智池痴稚置致蜘遅馳築畜竹筑蓄"],
+  ["9280", "逐秩窒茶嫡着中仲宙忠抽昼柱注虫衷註酎鋳駐樗瀦猪苧著貯丁兆凋喋寵帖帳庁弔張彫徴懲挑暢朝潮牒町眺聴脹腸蝶調諜超跳銚長頂鳥勅捗直朕沈珍賃鎮陳津墜椎槌追鎚痛通塚栂掴槻佃漬柘辻蔦綴鍔椿潰坪壷嬬紬爪吊釣鶴亭低停偵剃貞呈堤定帝底庭廷弟悌抵挺提梯汀碇禎程締艇訂諦蹄逓"],
+  ["9340", "邸鄭釘鼎泥摘擢敵滴的笛適鏑溺哲徹撤轍迭鉄典填天展店添纏甜貼転顛点伝殿澱田電兎吐堵塗妬屠徒斗杜渡登菟賭途都鍍砥砺努度土奴怒倒党冬"],
+  ["9380", "凍刀唐塔塘套宕島嶋悼投搭東桃梼棟盗淘湯涛灯燈当痘祷等答筒糖統到董蕩藤討謄豆踏逃透鐙陶頭騰闘働動同堂導憧撞洞瞳童胴萄道銅峠鴇匿得徳涜特督禿篤毒独読栃橡凸突椴届鳶苫寅酉瀞噸屯惇敦沌豚遁頓呑曇鈍奈那内乍凪薙謎灘捺鍋楢馴縄畷南楠軟難汝二尼弐迩匂賑肉虹廿日乳入"],
+  ["9440", "如尿韮任妊忍認濡禰祢寧葱猫熱年念捻撚燃粘乃廼之埜嚢悩濃納能脳膿農覗蚤巴把播覇杷波派琶破婆罵芭馬俳廃拝排敗杯盃牌背肺輩配倍培媒梅"],
+  ["9480", "楳煤狽買売賠陪這蝿秤矧萩伯剥博拍柏泊白箔粕舶薄迫曝漠爆縛莫駁麦函箱硲箸肇筈櫨幡肌畑畠八鉢溌発醗髪伐罰抜筏閥鳩噺塙蛤隼伴判半反叛帆搬斑板氾汎版犯班畔繁般藩販範釆煩頒飯挽晩番盤磐蕃蛮匪卑否妃庇彼悲扉批披斐比泌疲皮碑秘緋罷肥被誹費避非飛樋簸備尾微枇毘琵眉美"],
+  ["9540", "鼻柊稗匹疋髭彦膝菱肘弼必畢筆逼桧姫媛紐百謬俵彪標氷漂瓢票表評豹廟描病秒苗錨鋲蒜蛭鰭品彬斌浜瀕貧賓頻敏瓶不付埠夫婦富冨布府怖扶敷"],
+  ["9580", "斧普浮父符腐膚芙譜負賦赴阜附侮撫武舞葡蕪部封楓風葺蕗伏副復幅服福腹複覆淵弗払沸仏物鮒分吻噴墳憤扮焚奮粉糞紛雰文聞丙併兵塀幣平弊柄並蔽閉陛米頁僻壁癖碧別瞥蔑箆偏変片篇編辺返遍便勉娩弁鞭保舗鋪圃捕歩甫補輔穂募墓慕戊暮母簿菩倣俸包呆報奉宝峰峯崩庖抱捧放方朋"],
+  ["9640", "法泡烹砲縫胞芳萌蓬蜂褒訪豊邦鋒飽鳳鵬乏亡傍剖坊妨帽忘忙房暴望某棒冒紡肪膨謀貌貿鉾防吠頬北僕卜墨撲朴牧睦穆釦勃没殆堀幌奔本翻凡盆"],
+  ["9680", "摩磨魔麻埋妹昧枚毎哩槙幕膜枕鮪柾鱒桝亦俣又抹末沫迄侭繭麿万慢満漫蔓味未魅巳箕岬密蜜湊蓑稔脈妙粍民眠務夢無牟矛霧鵡椋婿娘冥名命明盟迷銘鳴姪牝滅免棉綿緬面麺摸模茂妄孟毛猛盲網耗蒙儲木黙目杢勿餅尤戻籾貰問悶紋門匁也冶夜爺耶野弥矢厄役約薬訳躍靖柳薮鑓愉愈油癒"],
+  ["9740", "諭輸唯佑優勇友宥幽悠憂揖有柚湧涌猶猷由祐裕誘遊邑郵雄融夕予余与誉輿預傭幼妖容庸揚揺擁曜楊様洋溶熔用窯羊耀葉蓉要謡踊遥陽養慾抑欲"],
+  ["9780", "沃浴翌翼淀羅螺裸来莱頼雷洛絡落酪乱卵嵐欄濫藍蘭覧利吏履李梨理璃痢裏裡里離陸律率立葎掠略劉流溜琉留硫粒隆竜龍侶慮旅虜了亮僚両凌寮料梁涼猟療瞭稜糧良諒遼量陵領力緑倫厘林淋燐琳臨輪隣鱗麟瑠塁涙累類令伶例冷励嶺怜玲礼苓鈴隷零霊麗齢暦歴列劣烈裂廉恋憐漣煉簾練聯"],
+  ["9840", "蓮連錬呂魯櫓炉賂路露労婁廊弄朗楼榔浪漏牢狼篭老聾蝋郎六麓禄肋録論倭和話歪賄脇惑枠鷲亙亘鰐詫藁蕨椀湾碗腕"],
+  ["989f", "弌丐丕个丱丶丼丿乂乖乘亂亅豫亊舒弍于亞亟亠亢亰亳亶从仍仄仆仂仗仞仭仟价伉佚估佛佝佗佇佶侈侏侘佻佩佰侑佯來侖儘俔俟俎俘俛俑俚俐俤俥倚倨倔倪倥倅伜俶倡倩倬俾俯們倆偃假會偕偐偈做偖偬偸傀傚傅傴傲"],
+  ["9940", "僉僊傳僂僖僞僥僭僣僮價僵儉儁儂儖儕儔儚儡儺儷儼儻儿兀兒兌兔兢竸兩兪兮冀冂囘册冉冏冑冓冕冖冤冦冢冩冪冫决冱冲冰况冽凅凉凛几處凩凭"],
+  ["9980", "凰凵凾刄刋刔刎刧刪刮刳刹剏剄剋剌剞剔剪剴剩剳剿剽劍劔劒剱劈劑辨辧劬劭劼劵勁勍勗勞勣勦飭勠勳勵勸勹匆匈甸匍匐匏匕匚匣匯匱匳匸區卆卅丗卉卍凖卞卩卮夘卻卷厂厖厠厦厥厮厰厶參簒雙叟曼燮叮叨叭叺吁吽呀听吭吼吮吶吩吝呎咏呵咎呟呱呷呰咒呻咀呶咄咐咆哇咢咸咥咬哄哈咨"],
+  ["9a40", "咫哂咤咾咼哘哥哦唏唔哽哮哭哺哢唹啀啣啌售啜啅啖啗唸唳啝喙喀咯喊喟啻啾喘喞單啼喃喩喇喨嗚嗅嗟嗄嗜嗤嗔嘔嗷嘖嗾嗽嘛嗹噎噐營嘴嘶嘲嘸"],
+  ["9a80", "噫噤嘯噬噪嚆嚀嚊嚠嚔嚏嚥嚮嚶嚴囂嚼囁囃囀囈囎囑囓囗囮囹圀囿圄圉圈國圍圓團圖嗇圜圦圷圸坎圻址坏坩埀垈坡坿垉垓垠垳垤垪垰埃埆埔埒埓堊埖埣堋堙堝塲堡塢塋塰毀塒堽塹墅墹墟墫墺壞墻墸墮壅壓壑壗壙壘壥壜壤壟壯壺壹壻壼壽夂夊夐夛梦夥夬夭夲夸夾竒奕奐奎奚奘奢奠奧奬奩"],
+  ["9b40", "奸妁妝佞侫妣妲姆姨姜妍姙姚娥娟娑娜娉娚婀婬婉娵娶婢婪媚媼媾嫋嫂媽嫣嫗嫦嫩嫖嫺嫻嬌嬋嬖嬲嫐嬪嬶嬾孃孅孀孑孕孚孛孥孩孰孳孵學斈孺宀"],
+  ["9b80", "它宦宸寃寇寉寔寐寤實寢寞寥寫寰寶寳尅將專對尓尠尢尨尸尹屁屆屎屓屐屏孱屬屮乢屶屹岌岑岔妛岫岻岶岼岷峅岾峇峙峩峽峺峭嶌峪崋崕崗嵜崟崛崑崔崢崚崙崘嵌嵒嵎嵋嵬嵳嵶嶇嶄嶂嶢嶝嶬嶮嶽嶐嶷嶼巉巍巓巒巖巛巫已巵帋帚帙帑帛帶帷幄幃幀幎幗幔幟幢幤幇幵并幺麼广庠廁廂廈廐廏"],
+  ["9c40", "廖廣廝廚廛廢廡廨廩廬廱廳廰廴廸廾弃弉彝彜弋弑弖弩弭弸彁彈彌彎弯彑彖彗彙彡彭彳彷徃徂彿徊很徑徇從徙徘徠徨徭徼忖忻忤忸忱忝悳忿怡恠"],
+  ["9c80", "怙怐怩怎怱怛怕怫怦怏怺恚恁恪恷恟恊恆恍恣恃恤恂恬恫恙悁悍惧悃悚悄悛悖悗悒悧悋惡悸惠惓悴忰悽惆悵惘慍愕愆惶惷愀惴惺愃愡惻惱愍愎慇愾愨愧慊愿愼愬愴愽慂慄慳慷慘慙慚慫慴慯慥慱慟慝慓慵憙憖憇憬憔憚憊憑憫憮懌懊應懷懈懃懆憺懋罹懍懦懣懶懺懴懿懽懼懾戀戈戉戍戌戔戛"],
+  ["9d40", "戞戡截戮戰戲戳扁扎扞扣扛扠扨扼抂抉找抒抓抖拔抃抔拗拑抻拏拿拆擔拈拜拌拊拂拇抛拉挌拮拱挧挂挈拯拵捐挾捍搜捏掖掎掀掫捶掣掏掉掟掵捫"],
+  ["9d80", "捩掾揩揀揆揣揉插揶揄搖搴搆搓搦搶攝搗搨搏摧摯摶摎攪撕撓撥撩撈撼據擒擅擇撻擘擂擱擧舉擠擡抬擣擯攬擶擴擲擺攀擽攘攜攅攤攣攫攴攵攷收攸畋效敖敕敍敘敞敝敲數斂斃變斛斟斫斷旃旆旁旄旌旒旛旙无旡旱杲昊昃旻杳昵昶昴昜晏晄晉晁晞晝晤晧晨晟晢晰暃暈暎暉暄暘暝曁暹曉暾暼"],
+  ["9e40", "曄暸曖曚曠昿曦曩曰曵曷朏朖朞朦朧霸朮朿朶杁朸朷杆杞杠杙杣杤枉杰枩杼杪枌枋枦枡枅枷柯枴柬枳柩枸柤柞柝柢柮枹柎柆柧檜栞框栩桀桍栲桎"],
+  ["9e80", "梳栫桙档桷桿梟梏梭梔條梛梃檮梹桴梵梠梺椏梍桾椁棊椈棘椢椦棡椌棍棔棧棕椶椒椄棗棣椥棹棠棯椨椪椚椣椡棆楹楷楜楸楫楔楾楮椹楴椽楙椰楡楞楝榁楪榲榮槐榿槁槓榾槎寨槊槝榻槃榧樮榑榠榜榕榴槞槨樂樛槿權槹槲槧樅榱樞槭樔槫樊樒櫁樣樓橄樌橲樶橸橇橢橙橦橈樸樢檐檍檠檄檢檣"],
+  ["9f40", "檗蘗檻櫃櫂檸檳檬櫞櫑櫟檪櫚櫪櫻欅蘖櫺欒欖鬱欟欸欷盜欹飮歇歃歉歐歙歔歛歟歡歸歹歿殀殄殃殍殘殕殞殤殪殫殯殲殱殳殷殼毆毋毓毟毬毫毳毯"],
+  ["9f80", "麾氈氓气氛氤氣汞汕汢汪沂沍沚沁沛汾汨汳沒沐泄泱泓沽泗泅泝沮沱沾沺泛泯泙泪洟衍洶洫洽洸洙洵洳洒洌浣涓浤浚浹浙涎涕濤涅淹渕渊涵淇淦涸淆淬淞淌淨淒淅淺淙淤淕淪淮渭湮渮渙湲湟渾渣湫渫湶湍渟湃渺湎渤滿渝游溂溪溘滉溷滓溽溯滄溲滔滕溏溥滂溟潁漑灌滬滸滾漿滲漱滯漲滌"],
+  ["e040", "漾漓滷澆潺潸澁澀潯潛濳潭澂潼潘澎澑濂潦澳澣澡澤澹濆澪濟濕濬濔濘濱濮濛瀉瀋濺瀑瀁瀏濾瀛瀚潴瀝瀘瀟瀰瀾瀲灑灣炙炒炯烱炬炸炳炮烟烋烝"],
+  ["e080", "烙焉烽焜焙煥煕熈煦煢煌煖煬熏燻熄熕熨熬燗熹熾燒燉燔燎燠燬燧燵燼燹燿爍爐爛爨爭爬爰爲爻爼爿牀牆牋牘牴牾犂犁犇犒犖犢犧犹犲狃狆狄狎狒狢狠狡狹狷倏猗猊猜猖猝猴猯猩猥猾獎獏默獗獪獨獰獸獵獻獺珈玳珎玻珀珥珮珞璢琅瑯琥珸琲琺瑕琿瑟瑙瑁瑜瑩瑰瑣瑪瑶瑾璋璞璧瓊瓏瓔珱"],
+  ["e140", "瓠瓣瓧瓩瓮瓲瓰瓱瓸瓷甄甃甅甌甎甍甕甓甞甦甬甼畄畍畊畉畛畆畚畩畤畧畫畭畸當疆疇畴疊疉疂疔疚疝疥疣痂疳痃疵疽疸疼疱痍痊痒痙痣痞痾痿"],
+  ["e180", "痼瘁痰痺痲痳瘋瘍瘉瘟瘧瘠瘡瘢瘤瘴瘰瘻癇癈癆癜癘癡癢癨癩癪癧癬癰癲癶癸發皀皃皈皋皎皖皓皙皚皰皴皸皹皺盂盍盖盒盞盡盥盧盪蘯盻眈眇眄眩眤眞眥眦眛眷眸睇睚睨睫睛睥睿睾睹瞎瞋瞑瞠瞞瞰瞶瞹瞿瞼瞽瞻矇矍矗矚矜矣矮矼砌砒礦砠礪硅碎硴碆硼碚碌碣碵碪碯磑磆磋磔碾碼磅磊磬"],
+  ["e240", "磧磚磽磴礇礒礑礙礬礫祀祠祗祟祚祕祓祺祿禊禝禧齋禪禮禳禹禺秉秕秧秬秡秣稈稍稘稙稠稟禀稱稻稾稷穃穗穉穡穢穩龝穰穹穽窈窗窕窘窖窩竈窰"],
+  ["e280", "窶竅竄窿邃竇竊竍竏竕竓站竚竝竡竢竦竭竰笂笏笊笆笳笘笙笞笵笨笶筐筺笄筍笋筌筅筵筥筴筧筰筱筬筮箝箘箟箍箜箚箋箒箏筝箙篋篁篌篏箴篆篝篩簑簔篦篥籠簀簇簓篳篷簗簍篶簣簧簪簟簷簫簽籌籃籔籏籀籐籘籟籤籖籥籬籵粃粐粤粭粢粫粡粨粳粲粱粮粹粽糀糅糂糘糒糜糢鬻糯糲糴糶糺紆"],
+  ["e340", "紂紜紕紊絅絋紮紲紿紵絆絳絖絎絲絨絮絏絣經綉絛綏絽綛綺綮綣綵緇綽綫總綢綯緜綸綟綰緘緝緤緞緻緲緡縅縊縣縡縒縱縟縉縋縢繆繦縻縵縹繃縷"],
+  ["e380", "縲縺繧繝繖繞繙繚繹繪繩繼繻纃緕繽辮繿纈纉續纒纐纓纔纖纎纛纜缸缺罅罌罍罎罐网罕罔罘罟罠罨罩罧罸羂羆羃羈羇羌羔羞羝羚羣羯羲羹羮羶羸譱翅翆翊翕翔翡翦翩翳翹飜耆耄耋耒耘耙耜耡耨耿耻聊聆聒聘聚聟聢聨聳聲聰聶聹聽聿肄肆肅肛肓肚肭冐肬胛胥胙胝胄胚胖脉胯胱脛脩脣脯腋"],
+  ["e440", "隋腆脾腓腑胼腱腮腥腦腴膃膈膊膀膂膠膕膤膣腟膓膩膰膵膾膸膽臀臂膺臉臍臑臙臘臈臚臟臠臧臺臻臾舁舂舅與舊舍舐舖舩舫舸舳艀艙艘艝艚艟艤"],
+  ["e480", "艢艨艪艫舮艱艷艸艾芍芒芫芟芻芬苡苣苟苒苴苳苺莓范苻苹苞茆苜茉苙茵茴茖茲茱荀茹荐荅茯茫茗茘莅莚莪莟莢莖茣莎莇莊荼莵荳荵莠莉莨菴萓菫菎菽萃菘萋菁菷萇菠菲萍萢萠莽萸蔆菻葭萪萼蕚蒄葷葫蒭葮蒂葩葆萬葯葹萵蓊葢蒹蒿蒟蓙蓍蒻蓚蓐蓁蓆蓖蒡蔡蓿蓴蔗蔘蔬蔟蔕蔔蓼蕀蕣蕘蕈"],
+  ["e540", "蕁蘂蕋蕕薀薤薈薑薊薨蕭薔薛藪薇薜蕷蕾薐藉薺藏薹藐藕藝藥藜藹蘊蘓蘋藾藺蘆蘢蘚蘰蘿虍乕虔號虧虱蚓蚣蚩蚪蚋蚌蚶蚯蛄蛆蚰蛉蠣蚫蛔蛞蛩蛬"],
+  ["e580", "蛟蛛蛯蜒蜆蜈蜀蜃蛻蜑蜉蜍蛹蜊蜴蜿蜷蜻蜥蜩蜚蝠蝟蝸蝌蝎蝴蝗蝨蝮蝙蝓蝣蝪蠅螢螟螂螯蟋螽蟀蟐雖螫蟄螳蟇蟆螻蟯蟲蟠蠏蠍蟾蟶蟷蠎蟒蠑蠖蠕蠢蠡蠱蠶蠹蠧蠻衄衂衒衙衞衢衫袁衾袞衵衽袵衲袂袗袒袮袙袢袍袤袰袿袱裃裄裔裘裙裝裹褂裼裴裨裲褄褌褊褓襃褞褥褪褫襁襄褻褶褸襌褝襠襞"],
+  ["e640", "襦襤襭襪襯襴襷襾覃覈覊覓覘覡覩覦覬覯覲覺覽覿觀觚觜觝觧觴觸訃訖訐訌訛訝訥訶詁詛詒詆詈詼詭詬詢誅誂誄誨誡誑誥誦誚誣諄諍諂諚諫諳諧"],
+  ["e680", "諤諱謔諠諢諷諞諛謌謇謚諡謖謐謗謠謳鞫謦謫謾謨譁譌譏譎證譖譛譚譫譟譬譯譴譽讀讌讎讒讓讖讙讚谺豁谿豈豌豎豐豕豢豬豸豺貂貉貅貊貍貎貔豼貘戝貭貪貽貲貳貮貶賈賁賤賣賚賽賺賻贄贅贊贇贏贍贐齎贓賍贔贖赧赭赱赳趁趙跂趾趺跏跚跖跌跛跋跪跫跟跣跼踈踉跿踝踞踐踟蹂踵踰踴蹊"],
+  ["e740", "蹇蹉蹌蹐蹈蹙蹤蹠踪蹣蹕蹶蹲蹼躁躇躅躄躋躊躓躑躔躙躪躡躬躰軆躱躾軅軈軋軛軣軼軻軫軾輊輅輕輒輙輓輜輟輛輌輦輳輻輹轅轂輾轌轉轆轎轗轜"],
+  ["e780", "轢轣轤辜辟辣辭辯辷迚迥迢迪迯邇迴逅迹迺逑逕逡逍逞逖逋逧逶逵逹迸遏遐遑遒逎遉逾遖遘遞遨遯遶隨遲邂遽邁邀邊邉邏邨邯邱邵郢郤扈郛鄂鄒鄙鄲鄰酊酖酘酣酥酩酳酲醋醉醂醢醫醯醪醵醴醺釀釁釉釋釐釖釟釡釛釼釵釶鈞釿鈔鈬鈕鈑鉞鉗鉅鉉鉤鉈銕鈿鉋鉐銜銖銓銛鉚鋏銹銷鋩錏鋺鍄錮"],
+  ["e840", "錙錢錚錣錺錵錻鍜鍠鍼鍮鍖鎰鎬鎭鎔鎹鏖鏗鏨鏥鏘鏃鏝鏐鏈鏤鐚鐔鐓鐃鐇鐐鐶鐫鐵鐡鐺鑁鑒鑄鑛鑠鑢鑞鑪鈩鑰鑵鑷鑽鑚鑼鑾钁鑿閂閇閊閔閖閘閙"],
+  ["e880", "閠閨閧閭閼閻閹閾闊濶闃闍闌闕闔闖關闡闥闢阡阨阮阯陂陌陏陋陷陜陞陝陟陦陲陬隍隘隕隗險隧隱隲隰隴隶隸隹雎雋雉雍襍雜霍雕雹霄霆霈霓霎霑霏霖霙霤霪霰霹霽霾靄靆靈靂靉靜靠靤靦靨勒靫靱靹鞅靼鞁靺鞆鞋鞏鞐鞜鞨鞦鞣鞳鞴韃韆韈韋韜韭齏韲竟韶韵頏頌頸頤頡頷頽顆顏顋顫顯顰"],
+  ["e940", "顱顴顳颪颯颱颶飄飃飆飩飫餃餉餒餔餘餡餝餞餤餠餬餮餽餾饂饉饅饐饋饑饒饌饕馗馘馥馭馮馼駟駛駝駘駑駭駮駱駲駻駸騁騏騅駢騙騫騷驅驂驀驃"],
+  ["e980", "騾驕驍驛驗驟驢驥驤驩驫驪骭骰骼髀髏髑髓體髞髟髢髣髦髯髫髮髴髱髷髻鬆鬘鬚鬟鬢鬣鬥鬧鬨鬩鬪鬮鬯鬲魄魃魏魍魎魑魘魴鮓鮃鮑鮖鮗鮟鮠鮨鮴鯀鯊鮹鯆鯏鯑鯒鯣鯢鯤鯔鯡鰺鯲鯱鯰鰕鰔鰉鰓鰌鰆鰈鰒鰊鰄鰮鰛鰥鰤鰡鰰鱇鰲鱆鰾鱚鱠鱧鱶鱸鳧鳬鳰鴉鴈鳫鴃鴆鴪鴦鶯鴣鴟鵄鴕鴒鵁鴿鴾鵆鵈"],
+  ["ea40", "鵝鵞鵤鵑鵐鵙鵲鶉鶇鶫鵯鵺鶚鶤鶩鶲鷄鷁鶻鶸鶺鷆鷏鷂鷙鷓鷸鷦鷭鷯鷽鸚鸛鸞鹵鹹鹽麁麈麋麌麒麕麑麝麥麩麸麪麭靡黌黎黏黐黔黜點黝黠黥黨黯"],
+  ["ea80", "黴黶黷黹黻黼黽鼇鼈皷鼕鼡鼬鼾齊齒齔齣齟齠齡齦齧齬齪齷齲齶龕龜龠堯槇遙瑤凜熙"]
+]);
+var CP932 = new DBCS("CP932", SHIFT_JIS, [
+  ["5c", "\\"],
+  ["7e", "~"],
+  ["80", ""],
+  ["815f", "＼～∥"],
+  ["817c", "－"],
+  ["8191", "￠￡"],
+  ["81ca", "￢"],
+  ["8740", "①", 19, "Ⅰ", 9],
+  ["875f", "㍉㌔㌢㍍㌘㌧㌃㌶㍑㍗㌍㌦㌣㌫㍊㌻㎜㎝㎞㎎㎏㏄㎡"],
+  ["877e", "㍻"],
+  ["8780", "〝〟№㏍℡㊤", 4, "㈱㈲㈹㍾㍽㍼≒≡∫∮∑√⊥∠∟⊿∵∩∪"],
+  ["ed40", "纊褜鍈銈蓜俉炻昱棈鋹曻彅丨仡仼伀伃伹佖侒侊侚侔俍偀倢俿倞偆偰偂傔僴僘兊兤冝冾凬刕劜劦勀勛匀匇匤卲厓厲叝﨎咜咊咩哿喆坙坥垬埈埇﨏"],
+  ["ed80", "塚增墲夋奓奛奝奣妤妺孖寀甯寘寬尞岦岺峵崧嵓﨑嵂嵭嶸嶹巐弡弴彧德忞恝悅悊惞惕愠惲愑愷愰憘戓抦揵摠撝擎敎昀昕昻昉昮昞昤晥晗晙晴晳暙暠暲暿曺朎朗杦枻桒柀栁桄棏﨓楨﨔榘槢樰橫橆橳橾櫢櫤毖氿汜沆汯泚洄涇浯涖涬淏淸淲淼渹湜渧渼溿澈澵濵瀅瀇瀨炅炫焏焄煜煆煇凞燁燾犱"],
+  ["ee40", "犾猤猪獷玽珉珖珣珒琇珵琦琪琩琮瑢璉璟甁畯皂皜皞皛皦益睆劯砡硎硤硺礰礼神祥禔福禛竑竧靖竫箞精絈絜綷綠緖繒罇羡羽茁荢荿菇菶葈蒴蕓蕙"],
+  ["ee80", "蕫﨟薰蘒﨡蠇裵訒訷詹誧誾諟諸諶譓譿賰賴贒赶﨣軏﨤逸遧郞都鄕鄧釚釗釞釭釮釤釥鈆鈐鈊鈺鉀鈼鉎鉙鉑鈹鉧銧鉷鉸鋧鋗鋙鋐﨧鋕鋠鋓錥錡鋻﨨錞鋿錝錂鍰鍗鎤鏆鏞鏸鐱鑅鑈閒隆﨩隝隯霳霻靃靍靏靑靕顗顥飯飼餧館馞驎髙髜魵魲鮏鮱鮻鰀鵰鵫鶴鸙黑"],
+  ["eeef", "ⅰ", 9, "￢￤＇＂"],
+  ["fa40", "ⅰ", 9, "Ⅰ", 9, "￢￤＇＂㈱№℡∵纊褜鍈銈蓜俉炻昱棈鋹曻彅丨仡仼伀伃伹佖侒侊侚侔俍偀倢俿倞偆偰偂傔僴僘兊"],
+  ["fa80", "兤冝冾凬刕劜劦勀勛匀匇匤卲厓厲叝﨎咜咊咩哿喆坙坥垬埈埇﨏塚增墲夋奓奛奝奣妤妺孖寀甯寘寬尞岦岺峵崧嵓﨑嵂嵭嶸嶹巐弡弴彧德忞恝悅悊惞惕愠惲愑愷愰憘戓抦揵摠撝擎敎昀昕昻昉昮昞昤晥晗晙晴晳暙暠暲暿曺朎朗杦枻桒柀栁桄棏﨓楨﨔榘槢樰橫橆橳橾櫢櫤毖氿汜沆汯泚洄涇浯"],
+  ["fb40", "涖涬淏淸淲淼渹湜渧渼溿澈澵濵瀅瀇瀨炅炫焏焄煜煆煇凞燁燾犱犾猤猪獷玽珉珖珣珒琇珵琦琪琩琮瑢璉璟甁畯皂皜皞皛皦益睆劯砡硎硤硺礰礼神"],
+  ["fb80", "祥禔福禛竑竧靖竫箞精絈絜綷綠緖繒罇羡羽茁荢荿菇菶葈蒴蕓蕙蕫﨟薰蘒﨡蠇裵訒訷詹誧誾諟諸諶譓譿賰賴贒赶﨣軏﨤逸遧郞都鄕鄧釚釗釞釭釮釤釥鈆鈐鈊鈺鉀鈼鉎鉙鉑鈹鉧銧鉷鉸鋧鋗鋙鋐﨧鋕鋠鋓錥錡鋻﨨錞鋿錝錂鍰鍗鎤鏆鏞鏸鐱鑅鑈閒隆﨩隝隯霳霻靃靍靏靑靕顗顥飯飼餧館馞驎髙"],
+  ["fc40", "髜魵魲鮏鮱鮻鰀鵰鵫鶴鸙黑"]
+]);
 var UTF8 = new Unicode(2, 2);
-var UTF16LE = new Unicode(0, 0);
+var UTF16LE2 = new Unicode(0, 0);
 var UTF16BE = new Unicode(0, 1);
 var UTF32LE = new Unicode(1, 0);
 var UTF32BE = new Unicode(1, 1);
-var encodings = { ISO_8859_1, ISO_8859_2, ISO_8859_3, ISO_8859_4, ISO_8859_5, ISO_8859_6, ISO_8859_7, ISO_8859_8, ISO_8859_9, ISO_8859_10, ISO_8859_11, ISO_8859_13, ISO_8859_14, ISO_8859_15, ISO_8859_16, CP037, CP500, CP875, CP1026, CP437, CP737, CP775, CP850, CP852, CP855, CP857, CP860, CP861, CP862, CP863, CP864, CP865, CP866, CP869, CP874, CP1250, CP1251, CP1252, CP1253, CP1254, CP1255, CP1256, CP1257, CP1258, MAC_CYRILLIC, MAC_GREEK, MAC_ICELAND, MAC_LATIN2, MAC_ROMAN, MAC_TURKISH, ATARIST, CP424, CP856, CP1006, KOI8_R, KOI8_U, KZ1048, NEXTSTEP, US_ASCII, UTF8, UTF16LE, UTF16BE, UTF32LE, UTF32BE };
-var aliases = "ISO-8859-1 819 88591 cp819 csisolatin1 ibm819 isoir100 l1 latin1,ISO-8859-2 88592 912 cp912 csisolatin2 ibm912 isoir101 l2 latin2,ISO-8859-3 88593 913 cp913 csisolatin3 ibm913 isoir109 l3 latin3,ISO-8859-4 88594 914 cp914 csisolatin4 ibm914 isoir110 l4 latin4,ISO-8859-5 88595 915 cp915 csisolatincyrillic cyrillic ibm915 isoir144,ISO-8859-6 1089 88596 arabic asmo708 cp1089 csisolatinarabic ecma114 ibm1089 isoir127,ISO-8859-7 813 88597 cp813 csisolatingreek ecma118 elot928 greek greek8 ibm813 isoir126 suneugreek,ISO-8859-8 88598 916 cp916 csisolatinhebrew hebrew ibm916 isoir138,ISO-8859-9 88599 920 cp920 csisolatin5 ibm920 isoir148 l5 latin5,ISO-8859-10 csisolatin6 isoir157 l6 latin6,ISO-8859-11 xiso885911,ISO-8859-13 885913,ISO-8859-14 isoceltic isoir199 l8 latin8,ISO-8859-15 885915 923 cp923 csiso885915 csisolatin csisolatin9 ibm923 iso885915fdis l9 latin latin9,ISO-8859-16 csiso885916 iso8859162001 isoir226 l10 latin10,CP037 37 cpibm37 csebcdiccpca csebcdiccpnl csebcdiccpus csebcdiccpwt csibm37 ebcdiccpca ebcdiccpnl ebcdiccpus ebcdiccpwt ibm37,CP500 500 csibm500 ebcdiccpbh ebcdiccpch ibm500,CP875 875 ibm875 xibm875,CP1026 1026 ibm1026,CP437 437 cspc8codepage437 ibm437 windows437,CP737 737 ibm737 xibm737,CP775 775 ibm775,CP850 850 cspc850multilingual ibm850,CP852 852 cspcp852 ibm852,CP855 855 cspcp855 ibm855,CP857 857 csibm857 ibm857,CP860 860 csibm860 ibm860,CP861 861 cpis csibm861 ibm861,CP862 862 csibm862 cspc862latinhebrew ibm862,CP863 863 csibm863 ibm863,CP864 864 csibm864 ibm864,CP865 865 csibm865 ibm865,CP866 866 csibm866 ibm866,CP869 869 cpgr csibm869 ibm869,CP874 874 ibm874 xibm874,CP1250 cp5346 win1250 windows1250,CP1251 ansi1251 cp5347 win1251 windows1251,CP1252 cp5348 ibm1252 win1252 windows1252,CP1253 cp5349 win1253 windows1253,CP1254 cp5350 win1254 windows1254,CP1255 win1255 windows1255,CP1256 win1256 windows1256,CP1257 cp5353 win1257 windows1257,CP1258 win1258 windows1258,MAC-CYRILLIC xmaccyrillic,MAC-GREEK xmacgreek,MAC-ICELAND xmaciceland,MAC-LATIN2 maccentraleurope xmaccentraleurope,MAC-ROMAN xmacroman,MAC-TURKISH xmacturkish,ATARIST,CP424 424 csibm424 ebcdiccphe ibm424,CP856 856 ibm856 xibm856,CP1006 1006 ibm1006 xibm1006,KOI8-R cskoi8r koi8,KOI8-U cskoi8u,KZ1048 cskz1048 rk1048 strk10482002,NEXTSTEP we8nextstep,US-ASCII 646 ansix34 ascii ascii7 cp367 csascii default ibm367 iso646irv iso646us isoir6 us,UTF8 unicode11utf8,UTF16LE utf16,UTF16BE,UTF32LE utf32,UTF32BE";
+var encodings = { US_ASCII, ISO_8859_1, ISO_8859_2, ISO_8859_3, ISO_8859_4, ISO_8859_5, ISO_8859_6, ISO_8859_7, ISO_8859_8, ISO_8859_9, ISO_8859_10, ISO_8859_11, ISO_8859_13, ISO_8859_14, ISO_8859_15, ISO_8859_16, CP037, CP424, CP500, CP875, CP1026, CP437, CP737, CP775, CP850, CP852, CP855, CP857, CP860, CP861, CP862, CP863, CP864, CP865, CP866, CP869, CP874, CP1250, CP1251, CP1252, CP1253, CP1254, CP1255, CP1256, CP1257, CP1258, MAC_CYRILLIC, MAC_GREEK, MAC_ICELAND, MAC_LATIN2, MAC_ROMAN, MAC_TURKISH, ATARIST, CP856, CP1006, KOI8_R, KOI8_U, KZ1048, NEXTSTEP, JIS_0201, SHIFT_JIS, CP932, UTF8, UTF16LE: UTF16LE2, UTF16BE, UTF32LE, UTF32BE };
+var aliases = "US-ASCII 646 ansix34 ascii ascii7 cp367 csascii default ibm367 iso646irv iso646us isoir6 us,ISO-8859-1 819 88591 cp819 csisolatin1 ibm819 isoir100 l1 latin1,ISO-8859-2 88592 912 cp912 csisolatin2 ibm912 isoir101 l2 latin2,ISO-8859-3 88593 913 cp913 csisolatin3 ibm913 isoir109 l3 latin3,ISO-8859-4 88594 914 cp914 csisolatin4 ibm914 isoir110 l4 latin4,ISO-8859-5 88595 915 cp915 csisolatincyrillic cyrillic ibm915 isoir144,ISO-8859-6 1089 88596 arabic asmo708 cp1089 csisolatinarabic ecma114 ibm1089 isoir127,ISO-8859-7 813 88597 cp813 csisolatingreek ecma118 elot928 greek greek8 ibm813 isoir126 suneugreek,ISO-8859-8 88598 916 cp916 csisolatinhebrew hebrew ibm916 isoir138,ISO-8859-9 88599 920 cp920 csisolatin5 ibm920 isoir148 l5 latin5,ISO-8859-10 csisolatin6 isoir157 l6 latin6,ISO-8859-11 xiso885911,ISO-8859-13 885913,ISO-8859-14 isoceltic isoir199 l8 latin8,ISO-8859-15 885915 923 cp923 csiso885915 csisolatin csisolatin9 ibm923 iso885915fdis l9 latin latin9,ISO-8859-16 csiso885916 iso8859162001 isoir226 l10 latin10,CP037 37 cpibm37 csebcdiccpca csebcdiccpnl csebcdiccpus csebcdiccpwt csibm37 ebcdiccpca ebcdiccpnl ebcdiccpus ebcdiccpwt ibm37,CP424 424 csibm424 ebcdiccphe ibm424,CP500 500 csibm500 ebcdiccpbh ebcdiccpch ibm500,CP875 875 ibm875 xibm875,CP1026 1026 ibm1026,CP437 437 cspc8codepage437 ibm437 windows437,CP737 737 ibm737 xibm737,CP775 775 ibm775,CP850 850 cspc850multilingual ibm850,CP852 852 cspcp852 ibm852,CP855 855 cspcp855 ibm855,CP857 857 csibm857 ibm857,CP860 860 csibm860 ibm860,CP861 861 cpis csibm861 ibm861,CP862 862 csibm862 cspc862latinhebrew ibm862,CP863 863 csibm863 ibm863,CP864 864 csibm864 ibm864,CP865 865 csibm865 ibm865,CP866 866 csibm866 ibm866,CP869 869 cpgr csibm869 ibm869,CP874 874 ibm874 xibm874,CP1250 cp5346 win1250 windows1250,CP1251 ansi1251 cp5347 win1251 windows1251,CP1252 cp5348 ibm1252 win1252 windows1252,CP1253 cp5349 win1253 windows1253,CP1254 cp5350 win1254 windows1254,CP1255 win1255 windows1255,CP1256 win1256 windows1256,CP1257 cp5353 win1257 windows1257,CP1258 win1258 windows1258,MAC-CYRILLIC xmaccyrillic,MAC-GREEK xmacgreek,MAC-ICELAND xmaciceland,MAC-LATIN2 maccentraleurope xmaccentraleurope,MAC-ROMAN xmacroman,MAC-TURKISH xmacturkish,ATARIST,CP856 856 ibm856 xibm856,CP1006 1006 ibm1006 xibm1006,KOI8-R cskoi8r koi8,KOI8-U cskoi8u,KZ1048 cskz1048 rk1048 strk10482002,NEXTSTEP we8nextstep,JIS-0201 cshalfwidthkatakana x201,SHIFT-JIS csshiftjis jis201 mskanji sjis xsjis,CP932 932 ms932 win932 windows31j windows932,UTF8 unicode11utf8,UTF16LE utf16,UTF16BE,UTF32LE utf32,UTF32BE";
 export {
   ATARIST,
   CP037,
@@ -771,6 +1142,7 @@ export {
   CP869,
   CP874,
   CP875,
+  CP932,
   ISO_8859_1,
   ISO_8859_10,
   ISO_8859_11,
@@ -786,7 +1158,7 @@ export {
   ISO_8859_7,
   ISO_8859_8,
   ISO_8859_9,
-  IconvTiny,
+  JIS_0201,
   KOI8_R,
   KOI8_U,
   KZ1048,
@@ -797,15 +1169,15 @@ export {
   MAC_ROMAN,
   MAC_TURKISH,
   NEXTSTEP,
-  SBCS,
+  SHIFT_JIS,
   US_ASCII,
   UTF16BE,
-  UTF16LE,
+  UTF16LE2 as UTF16LE,
   UTF32BE,
   UTF32LE,
   UTF8,
-  Unicode,
   aliases,
   canonicalize,
+  createIconv,
   encodings
 };
