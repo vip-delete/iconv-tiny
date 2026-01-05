@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0] - 2026-01-07
+
+* Make API similar to iconv-lite
+
+## [1.3.0] - 2026-01-05
+
+* add JIS-0201, SHIFT-JIS and CP932
+
 ## [1.2.2] - 2025-07-12
 
 * fix byteLength

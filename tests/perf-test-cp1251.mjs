@@ -39,16 +39,48 @@ const iconvLiteEncoder = iconvLite.getEncoder("cp1251");
 const iconvLiteDecoder = iconvLite.getDecoder("cp1251");
 
 const cp = CP.create();
-const encoder = cp.newEncoder();
-const decoder = cp.newDecoder();
-const decoderNative = cp.newDecoder({ native: true });
+const encoder = cp.getEncoder();
+const decoder = cp.getDecoder();
+const decoderNative = cp.getDecoder({ native: true });
 const temp = new Uint8Array(text.length);
 
+// warm-up
+// eslint-disable-next-line no-lone-blocks
+{
+  iconvLiteEncoder.write(text);
+  iconvLiteEncoder.end();
+  encoder.encodeInto(text, temp);
+  encoder.flushInto(temp);
+  iconvLiteDecoder.write(buffer);
+  iconvLiteDecoder.end();
+  decoder.write(buf);
+  decoder.end();
+}
+
 console.log(`\nCP1251: Encode ${kb}KB text ${runs} times:`);
-run("iconv-lite", () => iconvLiteEncoder.write(text));
-run("iconv-tiny", () => encoder.encodeInto(text, temp));
+run("iconv-lite", () => {
+  iconvLiteEncoder.write(text);
+  iconvLiteEncoder.end();
+});
+run("iconv-tiny", () => {
+  encoder.encodeInto(text, temp);
+  encoder.flushInto(temp);
+});
 
 console.log(`\nCP1251: Decode ${kb}KB array ${runs} times:`);
-run("iconv-lite", () => iconvLiteDecoder.write(buffer));
-run("iconv-tiny", () => decoder.decode(buf));
-run("iconv-tiny", () => decoderNative.decode(buf), " <--- native:true");
+run("iconv-lite", () => {
+  iconvLiteDecoder.write(buffer);
+  iconvLiteDecoder.end();
+});
+run("iconv-tiny", () => {
+  decoder.write(buf);
+  decoder.end();
+});
+run(
+  "iconv-tiny",
+  () => {
+    decoderNative.write(buf);
+    decoderNative.end();
+  },
+  " <--- native:true",
+);

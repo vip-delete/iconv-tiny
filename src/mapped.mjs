@@ -1,5 +1,15 @@
-import { createEncoding, DEFAULT_CHAR_BYTE, isMapped, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
-import { CreateDecodeStateFn, CreateEncodeStateFn, DecodeFn, DecoderOperations, DecodeStateMapped, EncoderOperations, EncodeStateMapped, MappedCharsetContext } from "./types.mjs";
+import { createEncodingFast, DEFAULT_CHAR_BYTE, isMapped, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
+import {
+  CreateDecodeStateFn,
+  CreateEncodeStateFn,
+  DecoderOperations,
+  DecodeStateMapped,
+  DecodeStateMappedFast,
+  EncoderOperations,
+  EncodeStateMapped,
+  EncodeStateMappedFast,
+  MappedCharsetContext,
+} from "./types.mjs";
 
 /**
  * @type {number}
@@ -7,81 +17,160 @@ import { CreateDecodeStateFn, CreateEncodeStateFn, DecodeFn, DecoderOperations, 
 export const NO_LEFTOVER = -1;
 
 /**
- * @type {boolean}
+ * @param {string|!ns.DefaultFunction|undefined} defaultChar
+ * @param {number} defaultNumber
+ * @return {number}
  */
-export const DEFAULT_NATIVE_DECODE = false;
+const getDefaultChar = (defaultChar, defaultNumber) => (typeof defaultChar === "string" && defaultChar.length > 0 ? defaultChar.charCodeAt(0) : defaultNumber);
 
-/**
- * @param {string} charsetName
- * @return {boolean}
- */
-const isNativeDecoderSupported = (charsetName) => {
-  try {
-    // eslint-disable-next-line no-new
-    new TextDecoder(charsetName);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-/**
- * @type {!DecodeFn}
- */
-const nativeDecodeMapped = (decodeState, input) => {
-  const state = /** @type {!DecodeStateMapped} */ (decodeState);
-  const decoder = /** @type {!TextDecoder} */ (state.decoder);
-  return decoder.decode(input, { stream: Boolean(input) });
-};
+// DECODE
 
 /**
  * @type {!CreateDecodeStateFn}
  */
-const createDecodeStateMapped = (charsetCtx, options) => {
-  const { charsetName, b2c, nativeDecoderSupported, softwareDecodeMapped } = /** @type {!MappedCharsetContext} */ (charsetCtx);
+export const createDecodeStateMapped = (charsetCtx, options) => {
+  const ctx = /** @type {!MappedCharsetContext} */ (charsetCtx);
+
   const defaultCharUnicode = options.defaultCharUnicode;
 
   /**
    * @type {number}
    */
-  let defaultChar = REPLACEMENT_CHARACTER_CODE;
+  const defaultChar = getDefaultChar(defaultCharUnicode, REPLACEMENT_CHARACTER_CODE);
 
   /**
    * @type {?ns.DefaultFunction}
    */
-  let handler = null;
-
-  /**
-   * @type {?TextDecoder}
-   */
-  let decoder = null;
-
-  const useNativeDecode = nativeDecoderSupported && (options?.native ?? DEFAULT_NATIVE_DECODE);
-
-  if (useNativeDecode) {
-    decoder = new TextDecoder(charsetName);
-  } else if (typeof defaultCharUnicode === "string") {
-    if (defaultCharUnicode.length) {
-      defaultChar = defaultCharUnicode.charCodeAt(0);
-    }
-  } else if (typeof defaultCharUnicode === "function") {
-    handler = defaultCharUnicode;
-  }
+  const handler = typeof defaultCharUnicode === "function" ? defaultCharUnicode : null;
 
   /**
    * @type {!DecodeStateMapped}
    */
   const state = {
-    b2c,
+    b2c: ctx.b2c,
+    leftover: NO_LEFTOVER,
     defaultChar,
     handler,
-    decodeFunction: useNativeDecode ? nativeDecodeMapped : softwareDecodeMapped,
-    decoder,
-    leftover: NO_LEFTOVER,
   };
 
   return state;
 };
+
+// DECODE FAST
+
+/**
+ * @param {!Uint16Array} arr
+ * @param {number} defaultChar
+ * @return {!Uint16Array}
+ */
+const createCachedForDefaultChar = (arr, defaultChar) => {
+  const cached = arr.slice();
+  for (let i = 0; i < arr.length; i++) {
+    const val = arr[i];
+    if (!isMapped(val)) {
+      cached[i] = defaultChar;
+    }
+  }
+  return cached;
+};
+
+/**
+ * @type {!CreateDecodeStateFn}
+ */
+export const createDecodeStateMappedFast = (charsetCtx, options) => {
+  const ctx = /** @type {!MappedCharsetContext} */ (charsetCtx);
+
+  const defaultCharUnicode = options.defaultCharUnicode;
+
+  /**
+   * @type {number}
+   */
+  const defaultChar = getDefaultChar(defaultCharUnicode, REPLACEMENT_CHARACTER_CODE);
+
+  // precalculate b2c for the given defaultChar
+  if (!ctx.b2cCached || ctx.b2cCachedForDefaultChar !== defaultChar) {
+    ctx.b2cCached = createCachedForDefaultChar(ctx.b2c, defaultChar);
+    ctx.b2cCachedForDefaultChar = defaultChar;
+  }
+
+  /**
+   * @type {!DecodeStateMappedFast}
+   */
+  const state = {
+    b2c: ctx.b2cCached,
+  };
+
+  return state;
+};
+
+// ENCODE
+
+/**
+ * @type {!CreateEncodeStateFn}
+ */
+export const createEncodeStateMapped = (charsetCtx, options) => {
+  const ctx = /** @type {!MappedCharsetContext} */ (charsetCtx);
+
+  const defaultCharByte = options.defaultCharByte;
+
+  /**
+   * @type {number}
+   */
+  const defaultChar = getDefaultChar(defaultCharByte, DEFAULT_CHAR_BYTE);
+
+  /**
+   * @type {?ns.DefaultFunction}
+   */
+  const handler = typeof defaultCharByte === "function" ? defaultCharByte : null;
+
+  /**
+   * @type {!EncodeStateMapped}
+   */
+  const state = {
+    r: 0,
+    w: 0,
+    c2b: ctx.c2b,
+    defaultChar,
+    handler,
+  };
+
+  return state;
+};
+
+// ENCODE FAST
+
+/**
+ * @type {!CreateEncodeStateFn}
+ */
+export const createEncodeStateMappedFast = (charsetCtx, options) => {
+  const ctx = /** @type {!MappedCharsetContext} */ (charsetCtx);
+
+  const defaultCharByte = options.defaultCharByte;
+
+  /**
+   * @type {number}
+   */
+  const defaultChar = getDefaultChar(defaultCharByte, DEFAULT_CHAR_BYTE);
+
+  // precalculate c2b for the given defaultChar
+  if (!ctx.c2bCached || ctx.c2bCachedForDefaultChar !== defaultChar) {
+    ctx.c2bCached = createCachedForDefaultChar(ctx.c2b, defaultChar);
+    ctx.c2bCachedForDefaultChar = defaultChar;
+  }
+
+  /**
+   * @type {!EncodeStateMappedFast}
+   */
+  const state = {
+    r: 0,
+    w: 0,
+    c2b: ctx.c2bCached,
+  };
+
+  return state;
+};
+
+// CHARSET
 
 /**
  * @param {!Uint16Array} b2c
@@ -99,76 +188,42 @@ const createC2B = (b2c) => {
 };
 
 /**
- * @type {!CreateEncodeStateFn}
- */
-export const createEncodeStateMapped = (charsetCtx, options) => {
-  const ctx = /** @type {!MappedCharsetContext} */ (charsetCtx);
-  const b2c = ctx.b2c;
-  if (!ctx.c2b) {
-    ctx.c2b = createC2B(b2c);
-  }
-  const c2b = ctx.c2b;
-
-  const defaultCharByte = options.defaultCharByte;
-
-  /**
-   * @type {number}
-   */
-  let defaultChar = DEFAULT_CHAR_BYTE;
-
-  /**
-   * @type {?ns.DefaultFunction}
-   */
-  let handler = null;
-
-  if (typeof defaultCharByte === "string") {
-    if (defaultCharByte.length) {
-      defaultChar = defaultCharByte.charCodeAt(0);
-    }
-  } else if (typeof defaultCharByte === "function") {
-    handler = defaultCharByte;
-  }
-
-  /**
-   * @type {!EncodeStateMapped}
-   */
-  const state = {
-    c2b,
-    defaultChar,
-    handler,
-  };
-
-  return state;
-};
-
-/**
- * @type {!DecodeFn}
- */
-const decodeMapped = (decodeState, input) => {
-  const { decodeFunction } = /** @type {!DecodeStateMapped} */ (decodeState);
-  return decodeFunction(decodeState, input);
-};
-
-/**
- * @type {!DecoderOperations}
- */
-const decoderOpMapped = {
-  createDecodeStateFn: createDecodeStateMapped,
-  decodeFn: decodeMapped,
-};
-
-/**
  * @param {string} charsetName
  * @param {!Uint16Array} b2c
- * @param {!DecodeFn} softwareDecode
+ * @param {!DecoderOperations} decoderOp
+ * @param {!DecoderOperations} decoderOpFast
  * @param {!EncoderOperations} encoderOp
+ * @param {!EncoderOperations} encoderOpFast
  * @return {!ns.Encoding}
  */
-export const createCharsetMapped = (charsetName, b2c, softwareDecode, encoderOp) => {
-  const nativeDecoderSupported = isNativeDecoderSupported(charsetName);
+export const createCharsetMapped = (
+  //
+  charsetName,
+  b2c,
+  decoderOp,
+  decoderOpFast,
+  encoderOp,
+  encoderOpFast,
+) => {
   /**
    * @type {!MappedCharsetContext}
    */
-  const ctx = { charsetName, nativeDecoderSupported, b2c, c2b: null, softwareDecodeMapped: softwareDecode };
-  return createEncoding(ctx, decoderOpMapped, encoderOp);
+  const ctx = {
+    //
+    charsetName,
+    b2c,
+    b2cCached: null,
+    b2cCachedForDefaultChar: 0,
+    c2b: createC2B(b2c),
+    c2bCached: null,
+    c2bCachedForDefaultChar: 0,
+  };
+  return createEncodingFast(
+    //
+    ctx,
+    decoderOp,
+    decoderOpFast,
+    encoderOp,
+    encoderOpFast,
+  );
 };

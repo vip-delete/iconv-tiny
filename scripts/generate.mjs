@@ -1,6 +1,6 @@
 import { buildSync } from "esbuild";
 import { getString, REPLACEMENT_CHARACTER_CODE } from "../src/commons.mjs";
-import { canonicalize } from "../src/iconv-tiny.mjs";
+import { canonicalize } from "../src/iconv.mjs";
 import { existsSync, getBanner, getExports, getIdentifier, mkdirSync, readFileSync, writeFileSync } from "./commons.mjs";
 import config from "./config.json" with { type: "json" };
 
@@ -365,11 +365,11 @@ const dbcsEncodingArgumentFactory = (encoding, b2c, parentB2C) => {
  */
 const processUnicode = (mjs, encodings) => {
   // add Unicode
-  mjs.push(`UTF8=new Unicode(2,2)`);
-  mjs.push(`UTF16LE=new Unicode(0,0)`);
-  mjs.push(`UTF16BE=new Unicode(0,1)`);
-  mjs.push(`UTF32LE=new Unicode(1,0)`);
-  mjs.push(`UTF32BE=new Unicode(1,1)`);
+  mjs.push(`UTF8=new Singleton(UTF_8)`);
+  mjs.push(`UTF16LE=new Singleton(UTF_16LE)`);
+  mjs.push(`UTF16BE=new Singleton(UTF_16BE)`);
+  mjs.push(`UTF32LE=new Singleton(UTF_32LE)`);
+  mjs.push(`UTF32BE=new Singleton(UTF_32BE)`);
   encodings.push({ name: "UTF8", aliases: "unicode-1-1-utf-8" });
   encodings.push({ name: "UTF16LE", aliases: "UTF16" });
   encodings.push({ name: "UTF16BE", aliases: "" });

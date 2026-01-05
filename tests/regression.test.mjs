@@ -26,7 +26,7 @@ const compareStr = (name, actualStr, expectedStr) => {
 
 /**
  * @param {!Array<string>} encodingsList
- * @param {!import("iconv-tiny").IconvTiny} iconvTiny
+ * @param {!import("iconv-tiny").Iconv} iconvTiny
  */
 export const regressionTest = (encodingsList, iconvTiny) => {
   const buffer = new Uint8Array(256);
@@ -129,9 +129,9 @@ export const regressionTest = (encodingsList, iconvTiny) => {
 
   // UTF-8 incomplete decode
   {
-    const dec = iconvTiny.getEncoding("UTF-8").newDecoder();
-    expect(dec.decode(new Uint8Array([0xd0]))).toBe("");
-    expect(dec.decode()).toBe("�"); // incomplete
+    const dec = iconvTiny.getEncoding("UTF-8").getDecoder();
+    expect(dec.write(new Uint8Array([0xd0]))).toBe("");
+    expect(dec.end()).toBe("�"); // incomplete
     const dec1 = iconvLite.getDecoder("UTF-8");
     expect(dec1.write(Buffer.from(new Uint8Array([0xd0])))).toBe("");
     expect(dec1.end()).toBe("�"); // incomplete

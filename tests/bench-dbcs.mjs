@@ -1,6 +1,6 @@
 import fs from "fs";
 import iconvLite from "iconv-lite";
-import { CP932 } from "iconv-tiny";
+import { aliases, createIconv, encodings } from "iconv-tiny";
 import { Bench } from "tinybench";
 import { abs } from "../scripts/commons.mjs";
 
@@ -8,7 +8,7 @@ import { abs } from "../scripts/commons.mjs";
 // it maps 0x8160 to 0xFF5E (FULLWIDTH TILDE)
 // original shift-jis maps 0x8160 to 0x301C (WAVE DASH)
 // to be consistent use CP932, it is superset of the shift-jis
-const shiftJIS = CP932.create();
+const iconvTiny = createIconv(encodings, aliases);
 // const shiftJIS = SHIFT_JIS.create();
 
 // native shift-jis isn't original shift-jis also
@@ -23,7 +23,7 @@ export const readFileSync = (filename) => fs.readFileSync(abs(filename));
 // encoding initialization 1
 {
   const str1 = "１＋２＝３";
-  const buf = shiftJIS.encode(str1);
+  const buf = iconvTiny.encode(str1, "cp932");
   const str2 = iconvLite.decode(buf, "cp932");
   const str3 = nativeDecoder.decode(buf);
   if (str1 !== str2 || str2 !== str3) {
@@ -35,7 +35,7 @@ export const readFileSync = (filename) => fs.readFileSync(abs(filename));
 const buf = readFileSync("./tests/KOKORO/SJIS.TXT");
 const str = nativeDecoder.decode(buf);
 {
-  const str1 = shiftJIS.decode(buf);
+  const str1 = iconvTiny.decode(buf, "cp932");
   const str2 = iconvLite.decode(buf, "cp932");
   if (str1 !== str2) {
     if (str1.length !== str2.length) {
@@ -60,16 +60,16 @@ bench
     nativeDecoder.decode(buf);
   })
   .add("iconv-tiny (decode)", () => {
-    shiftJIS.decode(buf);
+    iconvTiny.decode(buf, "cp932");
   })
   .add("iconv-lite (decode)", () => {
-    iconvLite.decode(buf, "shift-jis");
+    iconvLite.decode(buf, "cp932");
   })
   .add("iconv-tiny (encode)", () => {
-    shiftJIS.encode(str);
+    iconvTiny.encode(str, "cp932");
   })
   .add("iconv-lite (encode)", () => {
-    iconvLite.encode(str, "shift-jis");
+    iconvLite.encode(str, "cp932");
   });
 
 await bench.run();

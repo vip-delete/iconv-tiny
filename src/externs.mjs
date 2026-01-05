@@ -4,34 +4,6 @@
  */
 const ns = {
   /**
-   * @interface
-   */
-  IconvTiny: class {
-    /**
-     * @param {!Uint8Array} array
-     * @param {string} encoding
-     * @param {!ns.OptionsAndDecoderOptions} [options]
-     * @return {string}
-     */
-    decode(array, encoding, options) {}
-
-    /**
-     * @param {string} content
-     * @param {string} encoding
-     * @param {!ns.OptionsAndEncoderOptions} [options]
-     * @return {!Uint8Array}
-     */
-    encode(content, encoding, options) {}
-
-    /**
-     * @param {string} name
-     * @param {!ns.Options} [options]
-     * @return {!ns.Encoding}
-     */
-    getEncoding(name, options) {}
-  },
-
-  /**
    * @param {string} encoding
    * @return {string}
    */
@@ -40,44 +12,36 @@ const ns = {
   /**
    * @param {!Object<string, !ns.EncodingFactory>} [encodings]
    * @param {string} [aliases]
-   * @return {!ns.IconvTiny}
+   * @return {!ns.Iconv}
    */
   createIconv(encodings, aliases) {},
 
   /**
    * @interface
    */
-  Encoding: class {
+  Iconv: class {
     /**
+     * @param {!Uint8Array} buf
+     * @param {string} encoding
+     * @param {!ns.OptionsAndDecoderOptions} [options]
      * @return {string}
      */
-    getName() {}
+    decode(buf, encoding, options) {}
 
     /**
-     * @param {!Uint8Array} array
-     * @param {!ns.DecoderOptions} [options]
-     * @return {string}
-     */
-    decode(array, options) {}
-
-    /**
-     * @param {string} text
-     * @param {!ns.EncoderOptions} [options]
+     * @param {string} str
+     * @param {string} encoding
+     * @param {!ns.OptionsAndEncoderOptions} [options]
      * @return {!Uint8Array}
      */
-    encode(text, options) {}
+    encode(str, encoding, options) {}
 
     /**
-     * @param {!ns.DecoderOptions} [options]
-     * @return {!ns.CharsetDecoder}
+     * @param {string} name
+     * @param {!ns.Options} [options]
+     * @return {!ns.Encoding}
      */
-    newDecoder(options) {}
-
-    /**
-     * @param {!ns.EncoderOptions} [options]
-     * @return {!ns.CharsetEncoder}
-     */
-    newEncoder(options) {}
+    getEncoding(name, options) {}
   },
 
   /**
@@ -94,36 +58,92 @@ const ns = {
   /**
    * @interface
    */
-  CharsetDecoder: class {
+  Encoding: class {
     /**
-     * @param {!Uint8Array} [array]
      * @return {string}
      */
-    decode(array) {}
+    getName() {}
+
+    /**
+     * @param {!Uint8Array} buf
+     * @param {!ns.DecodeOptions} [options]
+     * @return {string}
+     */
+    decode(buf, options) {}
+
+    /**
+     * @param {string} str
+     * @param {!ns.EncodeOptions} [options]
+     * @return {!Uint8Array}
+     */
+    encode(str, options) {}
+
+    /**
+     * @param {string} str
+     * @return {number}
+     */
+    byteLength(str) {}
+
+    // --- Low-level Stream APIs ---
+
+    /**
+     * @param {!ns.DecodeOptions} [options]
+     * @return {!ns.DecoderStream}
+     */
+    getDecoder(options) {}
+
+    /**
+     * @param {!ns.EncodeOptions} [options]
+     * @return {!ns.EncoderStream}
+     */
+    getEncoder(options) {}
   },
 
   /**
    * @interface
    */
-  CharsetEncoder: class {
+  DecoderStream: class {
     /**
-     * @param {string} [text]
+     * @param {!Uint8Array} buf
+     * @return {string}
+     */
+    write(buf) {}
+
+    /**
+     * @return {string}
+     */
+    end() {}
+  },
+
+  /**
+   * @interface
+   */
+  EncoderStream: class {
+    /**
+     * @param {string} str
      * @return {!Uint8Array}
      */
-    encode(text) {}
+    write(str) {}
 
     /**
-     * @param {string} text
-     * @param {!Uint8Array} dst
+     * @return {!Uint8Array}
+     */
+    end() {}
+
+    // Low Level Encode API
+
+    /**
+     * @param {string} str
+     * @param {!Uint8Array} buf
      * @return {!ns.TextEncoderEncodeIntoResult}
      */
-    encodeInto(text, dst) {}
+    encodeInto(str, buf) {}
 
     /**
-     * @param {string} text
-     * @return {number}
+     * @param {!Uint8Array} buf
+     * @return {!ns.TextEncoderEncodeIntoResult}
      */
-    byteLength(text) {}
+    flushInto(buf) {}
   },
 };
 
@@ -142,7 +162,7 @@ ns.TextEncoderEncodeIntoResult;
  *            stripBOM: (boolean|undefined),
  *          }}
  */
-ns.DecoderOptions;
+ns.DecodeOptions;
 
 /**
  * @typedef {{
@@ -150,7 +170,7 @@ ns.DecoderOptions;
  *            addBOM: (boolean|undefined),
  *          }}
  */
-ns.EncoderOptions;
+ns.EncodeOptions;
 
 /**
  * @typedef {{
@@ -170,7 +190,7 @@ ns.Overrides;
 ns.DefaultFunction;
 
 /**
- * ns.Options & ns.DecoderOptions
+ * ns.Options & ns.DecodeOptions
  *
  * @typedef {{
  *            overrides: !ns.Overrides,
@@ -182,7 +202,7 @@ ns.DefaultFunction;
 ns.OptionsAndDecoderOptions;
 
 /**
- * ns.Options & ns.EncoderOptions
+ * ns.Options & ns.EncodeOptions
  *
  * @typedef {{
  *            overrides: !ns.Overrides,
@@ -192,12 +212,11 @@ ns.OptionsAndDecoderOptions;
  */
 ns.OptionsAndEncoderOptions;
 
-/**
- * @type {typeof ns.EncodingFactory}
- */
-ns.SBCS;
-
-/**
- * @type {typeof ns.EncodingFactory}
- */
-ns.Unicode;
+/** @type {typeof ns.EncodingFactory} */ ns.SBCS;
+/** @type {typeof ns.EncodingFactory} */ ns.DBCS;
+/** @type {typeof ns.EncodingFactory} */ ns.Singleton;
+/** @type {!ns.Encoding} */ ns.UTF_8;
+/** @type {!ns.Encoding} */ ns.UTF_16LE;
+/** @type {!ns.Encoding} */ ns.UTF_16BE;
+/** @type {!ns.Encoding} */ ns.UTF_32LE;
+/** @type {!ns.Encoding} */ ns.UTF_32BE;

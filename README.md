@@ -43,7 +43,7 @@ or use CDN:
 <script type="importmap">
   {
     "imports": {
-      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.3.0/dist/iconv-tiny.mjs"
+      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.3.1/dist/iconv-tiny.mjs"
     }
   }
 </script>
@@ -123,10 +123,10 @@ All encodings are generated automatically from https://www.unicode.org/Public/MA
 Comparison with iconv-lite module (Core i7-7500U CPU @ 2.7GHz, Node v24.2.0). Note: your results may vary, so please always check on your hardware.
 
 ```
-operation          iconv-lite@0.7.0   iconv-tiny@1.3.0
+operation          iconv-lite@0.7.2   iconv-tiny@1.4.0
 ------------------------------------------------------
-encode('win1251')     ~598 Mb/s          ~622 Mb/s
-decode('win1251')     ~218 Mb/s          ~263 Mb/s
+encode('win1251')     ~270 Mb/s          ~270 Mb/s
+decode('win1251')     ~120 Mb/s          ~220 Mb/s
 ```
 
 **iconv-lite** is NodeJS oriented and use specific API like `Buffer` and native NodeJS encodings.

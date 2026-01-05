@@ -1,6 +1,11 @@
-import { DBCS, canonicalize, createIconv, SBCS, Unicode } from "../src/index.mjs";
+import { Singleton, DBCS, canonicalize, createIconv, SBCS, UTF_16BE, UTF_16LE, UTF_32BE, UTF_32LE, UTF_8 } from "../src/index.mjs";
+ns.Singleton = Singleton;
 ns.DBCS = DBCS;
 ns.canonicalize = canonicalize;
 ns.createIconv = createIconv;
 ns.SBCS = SBCS;
-ns.Unicode = Unicode;
+ns.UTF_16BE = UTF_16BE;
+ns.UTF_16LE = UTF_16LE;
+ns.UTF_32BE = UTF_32BE;
+ns.UTF_32LE = UTF_32LE;
+ns.UTF_8 = UTF_8;

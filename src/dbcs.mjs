@@ -1,24 +1,28 @@
-import { byteLengthDefault, getString, isMapped, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
-import { createCharsetMapped, createEncodeStateMapped, NO_LEFTOVER } from "./mapped.mjs";
-import { ByteLengthFn, DecodeFn, DecodeStateMapped, EncodeIntoFn, EncoderOperations, EncodeStateMapped, MappedEncodingFactory } from "./types.mjs";
+import { byteLengthDefault, byteLengthMax2X, flushIntoDummy, getString, isMapped, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
+import { createCharsetMapped, createDecodeStateMapped, createEncodeStateMapped, NO_LEFTOVER } from "./mapped.mjs";
+import {
+  createDecoderOperations,
+  createEncoderOperations,
+  DecodeEndFn,
+  DecodeFn,
+  DecoderOperations,
+  DecodeStateMapped,
+  EncodeIntoFn,
+  EncoderOperations,
+  EncodeStateMapped,
+  MappedEncodingFactory,
+} from "./types.mjs";
 
-// SBCS DECODE
+// DBCS DECODE
 
 /**
  * @type {!DecodeFn}
  */
-const decodeDBCS = (decodeState, array) => {
+const decodeDBCS = (decodeState, buf) => {
   const state = /** @type {!DecodeStateMapped} */ (decodeState);
   const { b2c, defaultChar, handler, leftover } = state;
 
-  if (!array) {
-    // end of stream
-    state.leftover = NO_LEFTOVER;
-    // leftover is always unmapped
-    return leftover === NO_LEFTOVER ? "" : String.fromCharCode(handler?.(leftover, -1) ?? defaultChar);
-  }
-
-  const len = array.length;
+  const len = buf.length;
   if (len === 0) {
     return "";
   }
@@ -35,7 +39,7 @@ const decodeDBCS = (decodeState, array) => {
 
   // process leftover
   if (leftover === NO_LEFTOVER) {
-    lead = array[0];
+    lead = buf[0];
   } else {
     state.leftover = NO_LEFTOVER;
     lead = leftover;
@@ -50,7 +54,7 @@ const decodeDBCS = (decodeState, array) => {
       u16[j++] = ch;
     } else if (i + 1 < len) {
       // double-byte
-      const trail = array[i + 1];
+      const trail = buf[i + 1];
 
       const code = (lead << 8) | trail;
       ch = b2c[code];
@@ -72,7 +76,7 @@ const decodeDBCS = (decodeState, array) => {
     }
     i++;
     if (i < len) {
-      lead = array[i];
+      lead = buf[i];
     } else {
       break;
     }
@@ -81,21 +85,46 @@ const decodeDBCS = (decodeState, array) => {
   return getString(u16.subarray(0, j));
 };
 
-// SBCS ENCODE
+/**
+ * @type {!DecodeEndFn}
+ */
+const decodeEndDBCS = (decodeState) => {
+  const state = /** @type {!DecodeStateMapped} */ (decodeState);
+  const leftover = state.leftover;
+
+  // end of stream
+  state.leftover = NO_LEFTOVER;
+
+  // leftover is always unmapped
+  return leftover === NO_LEFTOVER ? "" : String.fromCharCode(state.handler?.(leftover, -1) ?? state.defaultChar);
+};
+
+/**
+ * @type {!DecoderOperations}
+ */
+const decoderOpDBCS = createDecoderOperations(
+  //
+  createDecodeStateMapped,
+  decodeDBCS,
+  decodeEndDBCS,
+);
+
+// DBCS ENCODE
 
 /**
  * @type {!EncodeIntoFn}
  */
-const encodeIntoDBCS = (encodeState, src, dst) => {
-  const { c2b, defaultChar, handler } = /** @type {!EncodeStateMapped} */ (encodeState);
+const encodeIntoDBCS = (encodeState, str, buf) => {
+  const state = /** @type {!EncodeStateMapped} */ (encodeState);
+  const { c2b, defaultChar, handler } = state;
 
   let i = 0;
   let j = 0;
-  const srcLen = src.length;
-  const dstLen = dst.length;
+  const srcLen = str.length;
+  const dstLen = buf.length;
   const dstLen1 = dstLen - 1;
   for (; i < srcLen; i++) {
-    const ch = src.charCodeAt(i);
+    const ch = str.charCodeAt(i);
     const val = c2b[ch];
     const value = isMapped(val) ? val : (handler?.(ch, i) ?? defaultChar);
     if (value > 255) {
@@ -104,8 +133,8 @@ const encodeIntoDBCS = (encodeState, src, dst) => {
         // not enought space in dst array
         break;
       }
-      dst[j] = value >> 8;
-      dst[j + 1] = value;
+      buf[j] = value >> 8;
+      buf[j + 1] = value;
       j += 2;
     } else {
       // one bytes sequence
@@ -113,39 +142,48 @@ const encodeIntoDBCS = (encodeState, src, dst) => {
         // not enought space in dst array
         break;
       }
-      dst[j] = value;
+      buf[j] = value;
       j += 1;
     }
   }
-  return { read: i, written: j };
+  state.r += i;
+  state.w += j;
 };
-
-/**
- * @type {!ByteLengthFn}
- */
-const byteLengthMaxDBCS = (encodeState, op, text) => text.length * 2;
 
 /**
  * @type {!EncoderOperations}
  */
-const encoderOp = {
-  createEncodeStateFn: createEncodeStateMapped,
-  encodeIntoFn: encodeIntoDBCS,
-  byteLengthMaxFn: byteLengthMaxDBCS,
-  byteLengthFn: byteLengthDefault,
-};
+const encoderOpDBCS = createEncoderOperations(
+  //
+  createEncodeStateMapped,
+  encodeIntoDBCS,
+  flushIntoDummy,
+  byteLengthMax2X,
+  byteLengthDefault,
+);
+
+// MAPPING TABLE
 
 /**
+ * @typedef {{
+ *            parent: ?MappedEncodingFactory,
+ *            mappingTable: !Array<!Array<string|number>>,
+ *          }}
+ */
+const CtxDBCS = {};
+
+/**
+ * @override
+ * @param {!CtxDBCS} ctx
+ * @param {!ns.Options} [options]
  * @return {!Uint16Array}
  */
-const createB2C = () => new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
+// eslint-disable-next-line no-unused-vars
+const createTableDBCS = (ctx, options) => {
+  const { parent, mappingTable } = ctx;
+  const b2c = new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
 
-/**
- * @param {!Uint16Array} b2c
- * @param {?MappedEncodingFactory} parent
- * @param {!Array<!Array<string|number>>} mappingTable
- */
-const applyMappingTable = (b2c, parent, mappingTable) => {
+  // applyMappingTable
   for (let rangeIdx = 0; rangeIdx < mappingTable.length; rangeIdx++) {
     const range = mappingTable[rangeIdx];
     const start = Number.parseInt(/** @type {string} */ (range[0]), 16);
@@ -169,7 +207,7 @@ const applyMappingTable = (b2c, parent, mappingTable) => {
   }
 
   if (parent) {
-    const parentB2C = parent.createB2C();
+    const parentB2C = parent.createTable();
     for (let i = 0; i < parentB2C.length; i++) {
       const parentCH = parentB2C[i];
       if (isMapped(parentCH)) {
@@ -180,7 +218,11 @@ const applyMappingTable = (b2c, parent, mappingTable) => {
       }
     }
   }
+
+  return b2c;
 };
+
+// FACTORY
 
 /**
  * @implements {ns.EncodingFactory}
@@ -193,28 +235,44 @@ export class DBCS {
    * @param {!Array<!Array<string|number>>} mappingTable
    */
   constructor(charsetName, parent, mappingTable) {
+    /**
+     * @private
+     * @constant
+     */
     this.charsetName = charsetName;
-    this.parent = parent;
-    this.mappingTable = mappingTable;
+    /**
+     * @private
+     * @constant
+     * @type {!CtxDBCS}
+     */
+    this.ctx = { parent, mappingTable };
   }
 
   /**
    * @override
+   * @param {!ns.Options} [options]
    * @return {!ns.Encoding}
    */
   // @ts-expect-error
-  create() {
-    return createCharsetMapped(this.charsetName, this.createB2C(), decodeDBCS, encoderOp);
+  create(options) {
+    return createCharsetMapped(
+      //
+      this.charsetName,
+      this.createTable(options),
+      decoderOpDBCS,
+      decoderOpDBCS,
+      encoderOpDBCS,
+      encoderOpDBCS,
+    );
   }
 
   /**
    * @override
+   * @param {!ns.Options} [options]
    * @return {!Uint16Array}
    */
   // @ts-expect-error
-  createB2C() {
-    const b2c = createB2C();
-    applyMappingTable(b2c, this.parent, this.mappingTable);
-    return b2c;
+  createTable(options) {
+    return createTableDBCS(this.ctx, options);
   }
 }

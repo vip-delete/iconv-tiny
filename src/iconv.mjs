@@ -9,9 +9,9 @@ export const canonicalize = (encoding) =>
     .replace(/(?<!\d)0+/gu, "");
 
 /**
- * @implements {ns.IconvTiny}
+ * @implements {ns.Iconv}
  */
-class IconvTiny {
+class Iconv {
   /**
    * @param {!Object<string, !ns.EncodingFactory>} [encodings]
    * @param {string} [aliases]
@@ -47,26 +47,28 @@ class IconvTiny {
 
   /**
    * @override
-   * @param {!Uint8Array} array
+   * @param {!Uint8Array} buf
    * @param {string} encoding
    * @param {!ns.OptionsAndDecoderOptions} [options]
    * @return {string}
    */
   // @ts-expect-error
-  decode(array, encoding, options) {
-    return this.getEncoding(encoding, options).decode(array, options);
+  decode(buf, encoding, options) {
+    const enc = this.getEncoding(encoding, options);
+    const str = enc.decode(buf, options);
+    return str;
   }
 
   /**
    * @override
-   * @param {string} content
+   * @param {string} str
    * @param {string} encoding
    * @param {!ns.OptionsAndEncoderOptions} [options]
    * @return {!Uint8Array}
    */
   // @ts-expect-error
-  encode(content, encoding, options) {
-    return this.getEncoding(encoding, options).encode(content, options);
+  encode(str, encoding, options) {
+    return this.getEncoding(encoding, options).encode(str, options);
   }
 
   /**
@@ -95,6 +97,6 @@ class IconvTiny {
 /**
  * @param {!Object<string, !ns.EncodingFactory>} [encodings]
  * @param {string} [aliases]
- * @return {!ns.IconvTiny}
+ * @return {!ns.Iconv}
  */
-export const createIconv = (encodings, aliases) => new IconvTiny(encodings, aliases);
+export const createIconv = (encodings, aliases) => new Iconv(encodings, aliases);

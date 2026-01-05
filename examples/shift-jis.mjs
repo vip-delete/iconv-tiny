@@ -10,8 +10,8 @@ console.log(str); // JS はすごい
 console.log(new TextDecoder("shift-jis").decode(buf)); // JS はすごい
 
 // stream mode (doble-byte sequence is split into two parts and decoder keeps the leftover byte)
-const decoder = shiftjis.newDecoder();
-const str2 = decoder.decode(buf.subarray(0, buf.length - 3));
-const tail = decoder.decode(buf.subarray(buf.length - 3));
+const decoder = shiftjis.getDecoder();
+const str2 = decoder.write(buf.subarray(0, buf.length - 3));
+const tail = decoder.write(buf.subarray(buf.length - 3));
 console.log(str2); // JS はす
 console.log(tail); // ごい

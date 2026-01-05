@@ -23,7 +23,7 @@ export default [
       "@stylistic/brace-style": ["error", "1tbs", { allowSingleLine: true }],
       "@stylistic/indent": ["error", 2],
       "capitalized-comments": 0,
-      "id-length": ["error", { exceptions: ["e", "i", "j", "k"] }],
+      "id-length": ["error", { exceptions: ["e", "i", "j", "k", "r", "w"] }],
       "jsdoc/require-param-description": 0,
       "jsdoc/require-returns-description": 0,
       "max-classes-per-file": 0,

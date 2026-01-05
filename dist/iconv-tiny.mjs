@@ -1,16 +1,71 @@
 /**
- * iconv-tiny v1.3.0
+ * iconv-tiny v1.4.0
  * (c) 2025-present vip.delete <vip.delete@gmail.com>
  * @license MIT
  **/
 
 
+// src/types.mjs
+var createDecoderOperations = (createDecodeStateFn, decodeFn, decodeEndFn) => ({
+  createDecodeStateFn,
+  decodeFn,
+  decodeEndFn
+});
+var createEncoderOperations = (createEncodeStateFn, encodeIntoFn, flushIntoFn, byteLengthMaxFn, byteLengthFn) => ({
+  createEncodeStateFn,
+  encodeIntoFn,
+  flushIntoFn,
+  byteLengthMaxFn,
+  byteLengthFn
+});
+
+// src/native.mjs
+var createDecodeStateNative = (charsetCtx, options) => {
+  const ignoreBOM = !(options?.stripBOM ?? STRIP_BOM_DEFAULT);
+  const state = {
+    decoder: new TextDecoder(charsetCtx.charsetName, { ignoreBOM })
+  };
+  return state;
+};
+var nativeDecode = (decodeState, input) => (
+  /** @type {!DecodeStateNative} */
+  decodeState.decoder.decode(input, { stream: true })
+);
+var nativeDecodeEnd = (decodeState) => (
+  /** @type {!DecodeStateNative} */
+  decodeState.decoder.decode()
+);
+var nativeDecoderOp = createDecoderOperations(
+  //
+  createDecodeStateNative,
+  nativeDecode,
+  nativeDecodeEnd
+);
+var isNativeDecoderSupported = (charsetName) => {
+  try {
+    new TextDecoder(charsetName);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 // src/commons.mjs
+var TEXT_ENCODER = new TextEncoder();
 var REPLACEMENT_CHARACTER_CODE = 65533;
 var DEFAULT_CHAR_BYTE = 63;
+var MAX_BPM = 65535;
+var MAX_CODE_POINT = 1114111;
+var BOM_CHAR_CODE = 65279;
+var STRIP_BOM_DEFAULT = true;
+var ADD_BOM_DEFAULT = false;
+var HIGH_SURROGATE_FROM = 55296;
+var LOW_SURROGATE_FROM = 56320;
 var STRING_SMALLSIZE = 192;
 var STRING_CHUNKSIZE = 1024;
-var UTF16LE = new TextDecoder("utf-16le", { fatal: true });
+var UTF16LE = new TextDecoder("utf-16le", { fatal: true, ignoreBOM: true });
+var MAX_PREPEND_BYTES = 4;
+var MAX_LEFTOVER_BYTES = 4;
 var getStringFallback = (u16) => {
   const len = u16.length;
   const result = [];
@@ -31,95 +86,164 @@ var getString = (u16) => {
   }
 };
 var isMapped = (num) => num !== REPLACEMENT_CHARACTER_CODE;
-var byteLengthDefault = (state, op, text) => {
-  let total = 0;
-  const buf = new Uint8Array(4096);
-  do {
-    const { read, written } = op.encodeIntoFn(state, text, buf);
-    text = text.slice(read);
-    total += written;
-  } while (text.length);
-  return total;
+var decodeEndDummy = () => "";
+var flushIntoDummy = () => {
 };
-var CharsetDecoder = class {
+var byteLengthMax1X = (str) => str.length;
+var byteLengthMax2X = (str) => 2 * str.length;
+var byteLengthMax4X = (str) => 4 * str.length;
+var put16LE = (cp, buf, i) => {
+  buf[i] = cp;
+  buf[i + 1] = cp >> 8;
+};
+var put16BE = (cp, buf, i) => {
+  buf[i] = cp >> 8;
+  buf[i + 1] = cp;
+};
+var put32LE = (cp, buf, i) => {
+  buf[i] = cp;
+  buf[i + 1] = cp >> 8;
+  buf[i + 2] = cp >> 16;
+  buf[i + 3] = cp >> 24;
+};
+var put32BE = (cp, buf, i) => {
+  buf[i] = cp >> 24;
+  buf[i + 1] = cp >> 16;
+  buf[i + 2] = cp >> 8;
+  buf[i + 3] = cp;
+};
+var get32LE = (buf, i) => (buf[i] | buf[i + 1] << 8 | buf[i + 2] << 16 | buf[i + 3] << 24) >>> 0;
+var get32BE = (buf, i) => (buf[i] << 24 | buf[i + 1] << 16 | buf[i + 2] << 8 | buf[i + 3]) >>> 0;
+var appendCodePoint = (cp, buf, i) => {
+  if (cp <= MAX_BPM) {
+    buf[i] = cp;
+    return 1;
+  }
+  if (cp > MAX_CODE_POINT) {
+    buf[i] = REPLACEMENT_CHARACTER_CODE;
+    return 1;
+  }
+  cp -= 65536;
+  buf[i] = HIGH_SURROGATE_FROM | cp >> 10;
+  buf[i + 1] = LOW_SURROGATE_FROM | cp & 1023;
+  return 2;
+};
+var TEMP_BUFFER = new Uint8Array(4096);
+var byteLengthDefault = (str, ctx2, op) => {
+  const state = op.createEncodeStateFn(ctx2, {});
+  do {
+    const read = state.r;
+    op.encodeIntoFn(state, str, TEMP_BUFFER);
+    str = str.slice(state.r - read);
+  } while (str.length);
+  op.flushIntoFn(state, TEMP_BUFFER);
+  return state.w;
+};
+var DecoderStream = class {
   /**
-   * @param {!CharsetContext} ctx
+   * @param {!DecodeState} state
    * @param {!DecoderOperations} op
-   * @param {!ns.DecoderOptions} [options]
    */
-  constructor(ctx, op, options) {
-    this.state = op.createDecodeStateFn(ctx, options ?? {});
+  constructor(state, op) {
+    this.state = state;
     this.op = op;
   }
   /**
    * @override
-   * @param {!Uint8Array} [src]
+   * @param {!Uint8Array} buf
    * @return {string}
    */
   // @ts-expect-error
-  decode(src) {
-    return this.op.decodeFn(this.state, src);
-  }
-};
-var CharsetEncoder = class {
-  /**
-   * @param {!CharsetContext} ctx
-   * @param {!EncoderOperations} op
-   * @param {!ns.EncoderOptions} [options]
-   */
-  constructor(ctx, op, options) {
-    this.ctx = ctx;
-    this.op = op;
-    this.options = options ?? {};
-    this.state = op.createEncodeStateFn(ctx, this.options);
+  write(buf) {
+    return this.op.decodeFn(this.state, buf);
   }
   /**
    * @override
-   * @param {string} [text]
+   * @return {string}
+   */
+  // @ts-expect-error
+  end() {
+    return this.op.decodeEndFn(this.state);
+  }
+};
+var EncoderStream = class {
+  /**
+   * @param {!EncodeState} state
+   * @param {!EncoderOperations} op
+   */
+  constructor(state, op) {
+    this.state = state;
+    this.op = op;
+  }
+  /**
+   * @override
+   * @param {string} str
    * @return {!Uint8Array}
    */
   // @ts-expect-error
-  encode(text) {
-    if (!text) {
-      return new Uint8Array(0);
-    }
-    const { ctx, op, options } = this;
-    const maxLen = op.byteLengthMaxFn(op.createEncodeStateFn(ctx, options), op, text);
-    const buf = new Uint8Array(maxLen);
-    const { written } = op.encodeIntoFn(this.state, text, buf);
-    return buf.subarray(0, written);
+  write(str) {
+    const { state, op } = this;
+    const buf = new Uint8Array(op.byteLengthMaxFn(str) + MAX_PREPEND_BYTES);
+    const writtenBefore = state.w;
+    op.encodeIntoFn(state, str, buf);
+    return buf.subarray(0, state.w - writtenBefore);
   }
   /**
    * @override
-   * @param {string} text
-   * @param {!Uint8Array} dst
+   * @return {!Uint8Array}
+   */
+  // @ts-expect-error
+  end() {
+    const { state, op } = this;
+    const buf = new Uint8Array(MAX_LEFTOVER_BYTES);
+    const writtenBefore = state.w;
+    op.flushIntoFn(state, buf);
+    return buf.subarray(0, state.w - writtenBefore);
+  }
+  // --- Low-Level Encoding APIs ---
+  /**
+   * @override
+   * @param {string} str
+   * @param {!Uint8Array} buf
    * @return {!ns.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
-  encodeInto(text, dst) {
-    return this.op.encodeIntoFn(this.state, text, dst);
+  encodeInto(str, buf) {
+    const { state, op } = this;
+    const readBefore = state.r;
+    const writtenBefore = state.w;
+    op.encodeIntoFn(state, str, buf);
+    return { read: state.r - readBefore, written: state.w - writtenBefore };
   }
   /**
    * @override
-   * @param {string} text
-   * @return {number}
+   * @param {!Uint8Array} buf
+   * @return {!ns.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
-  byteLength(text) {
-    const { ctx, op, options } = this;
-    return op.byteLengthFn(op.createEncodeStateFn(ctx, options), op, text);
+  flushInto(buf) {
+    const { state, op } = this;
+    const readBefore = state.r;
+    const writtenBefore = state.w;
+    op.flushIntoFn(state, buf);
+    return { read: state.r - readBefore, written: state.w - writtenBefore };
   }
 };
 var Encoding = class {
   /**
    * @param {!CharsetContext} ctx
    * @param {!DecoderOperations} decoderOp
+   * @param {?DecoderOperations} decoderOpFast
    * @param {!EncoderOperations} encoderOp
+   * @param {?EncoderOperations} encoderOpFast
    */
-  constructor(ctx, decoderOp, encoderOp3) {
-    this.ctx = ctx;
+  constructor(ctx2, decoderOp, decoderOpFast, encoderOp, encoderOpFast) {
+    this.ctx = ctx2;
     this.decoderOp = decoderOp;
-    this.encoderOp = encoderOp3;
+    this.decoderOpFast = decoderOpFast;
+    this.encoderOp = encoderOp;
+    this.encoderOpFast = encoderOpFast;
+    this.nativeDecoderSupported = isNativeDecoderSupported(ctx2.charsetName);
   }
   /**
    * @override
@@ -131,95 +255,199 @@ var Encoding = class {
   }
   /**
    * @override
-   * @param {!Uint8Array} array
-   * @param {!ns.DecoderOptions} [options]
+   * @param {!Uint8Array} buf
+   * @param {!ns.DecodeOptions} [options]
    * @return {string}
    */
   // @ts-expect-error
-  decode(array, options) {
-    const decoder = this.newDecoder(options);
-    return decoder.decode(array) + decoder.decode();
+  decode(buf, options) {
+    const decoder = this.getDecoder(options);
+    const body = decoder.write(buf);
+    const tail = decoder.end();
+    return tail ? body + tail : body;
   }
   /**
    * @override
-   * @param {string} text
-   * @param {!ns.EncoderOptions} [options]
+   * @param {string} str
+   * @param {!ns.EncodeOptions} [options]
    * @return {!Uint8Array}
    */
   // @ts-expect-error
-  encode(text, options) {
-    const encoder = this.newEncoder(options);
-    return encoder.encode(text);
+  encode(str, options) {
+    options ??= {};
+    const op = this.getEncoderOp(options);
+    const state = op.createEncodeStateFn(this.ctx, options);
+    const buf = new Uint8Array(op.byteLengthMaxFn(str) + MAX_PREPEND_BYTES);
+    op.encodeIntoFn(state, str, buf);
+    op.flushIntoFn(state, buf);
+    return buf.subarray(0, state.w);
   }
   /**
    * @override
-   * @param {!ns.DecoderOptions} [options]
-   * @return {!ns.CharsetDecoder}
+   * @param {string} str
+   * @return {number}
    */
   // @ts-expect-error
-  newDecoder(options) {
-    return new CharsetDecoder(this.ctx, this.decoderOp, options);
+  byteLength(str) {
+    const { ctx: ctx2, encoderOp } = this;
+    return encoderOp.byteLengthFn(str, ctx2, encoderOp);
+  }
+  // --- Low-level Stream APIs ---
+  /**
+   * @override
+   * @param {!ns.DecodeOptions} [options]
+   * @return {!DecoderStream}
+   */
+  // @ts-expect-error
+  getDecoder(options) {
+    options ??= {};
+    const op = this.getDecoderOp(options);
+    const state = op.createDecodeStateFn(this.ctx, options);
+    return new DecoderStream(state, op);
   }
   /**
    * @override
-   * @param {!ns.EncoderOptions} [options]
-   * @return {!ns.CharsetEncoder}
+   * @param {!ns.EncodeOptions} [options]
+   * @return {!EncoderStream}
    */
   // @ts-expect-error
-  newEncoder(options) {
-    return new CharsetEncoder(this.ctx, this.encoderOp, options);
+  getEncoder(options) {
+    options ??= {};
+    const op = this.getEncoderOp(options);
+    const state = op.createEncodeStateFn(this.ctx, options);
+    return new EncoderStream(state, op);
+  }
+  // Private
+  /**
+   * @private
+   * @param {!ns.DecodeOptions} options
+   * @return {!DecoderOperations}
+   */
+  getDecoderOp(options) {
+    if (this.nativeDecoderSupported && options.native) {
+      return nativeDecoderOp;
+    }
+    return this.decoderOpFast && typeof options.defaultCharUnicode !== "function" ? this.decoderOpFast : this.decoderOp;
+  }
+  /**
+   * @private
+   * @param {!ns.EncodeOptions} options
+   * @return {!EncoderOperations}
+   */
+  getEncoderOp(options) {
+    return this.encoderOpFast && typeof options.defaultCharByte !== "function" ? this.encoderOpFast : this.encoderOp;
   }
 };
-var createEncoding = (ctx, decoderOp, encoderOp3) => new Encoding(ctx, decoderOp, encoderOp3);
+var createEncodingFast = (ctx2, decoderOp, decoderOpFast, encoderOp, encoderOpFast) => new Encoding(
+  //
+  ctx2,
+  decoderOp,
+  decoderOpFast,
+  encoderOp,
+  encoderOpFast
+);
+var createEncoding = (ctx2, decoderOp, encoderOp) => createEncodingFast(
+  //
+  ctx2,
+  decoderOp,
+  decoderOp,
+  encoderOp,
+  encoderOp
+);
+var Singleton = class {
+  /**
+   * @param {!ns.Encoding} encoding
+   */
+  constructor(encoding) {
+    this.encoding = encoding;
+  }
+  /**
+   * @override
+   * @return {!ns.Encoding}
+   */
+  // @ts-expect-error
+  create() {
+    return this.encoding;
+  }
+};
 
 // src/mapped.mjs
 var NO_LEFTOVER = -1;
-var DEFAULT_NATIVE_DECODE = false;
-var isNativeDecoderSupported = (charsetName) => {
-  try {
-    new TextDecoder(charsetName);
-    return true;
-  } catch {
-    return false;
-  }
-};
-var nativeDecodeMapped = (decodeState, input) => {
-  const state = (
-    /** @type {!DecodeStateMapped} */
-    decodeState
-  );
-  const decoder = (
-    /** @type {!TextDecoder} */
-    state.decoder
-  );
-  return decoder.decode(input, { stream: Boolean(input) });
-};
+var getDefaultChar = (defaultChar, defaultNumber) => typeof defaultChar === "string" && defaultChar.length > 0 ? defaultChar.charCodeAt(0) : defaultNumber;
 var createDecodeStateMapped = (charsetCtx, options) => {
-  const { charsetName, b2c, nativeDecoderSupported, softwareDecodeMapped } = (
+  const ctx2 = (
     /** @type {!MappedCharsetContext} */
     charsetCtx
   );
   const defaultCharUnicode = options.defaultCharUnicode;
-  let defaultChar = REPLACEMENT_CHARACTER_CODE;
-  let handler = null;
-  let decoder = null;
-  const useNativeDecode = nativeDecoderSupported && (options?.native ?? DEFAULT_NATIVE_DECODE);
-  if (useNativeDecode) {
-    decoder = new TextDecoder(charsetName);
-  } else if (typeof defaultCharUnicode === "string") {
-    if (defaultCharUnicode.length) {
-      defaultChar = defaultCharUnicode.charCodeAt(0);
+  const defaultChar = getDefaultChar(defaultCharUnicode, REPLACEMENT_CHARACTER_CODE);
+  const handler = typeof defaultCharUnicode === "function" ? defaultCharUnicode : null;
+  const state = {
+    b2c: ctx2.b2c,
+    leftover: NO_LEFTOVER,
+    defaultChar,
+    handler
+  };
+  return state;
+};
+var createCachedForDefaultChar = (arr, defaultChar) => {
+  const cached = arr.slice();
+  for (let i = 0; i < arr.length; i++) {
+    const val = arr[i];
+    if (!isMapped(val)) {
+      cached[i] = defaultChar;
     }
-  } else if (typeof defaultCharUnicode === "function") {
-    handler = defaultCharUnicode;
+  }
+  return cached;
+};
+var createDecodeStateMappedFast = (charsetCtx, options) => {
+  const ctx2 = (
+    /** @type {!MappedCharsetContext} */
+    charsetCtx
+  );
+  const defaultCharUnicode = options.defaultCharUnicode;
+  const defaultChar = getDefaultChar(defaultCharUnicode, REPLACEMENT_CHARACTER_CODE);
+  if (!ctx2.b2cCached || ctx2.b2cCachedForDefaultChar !== defaultChar) {
+    ctx2.b2cCached = createCachedForDefaultChar(ctx2.b2c, defaultChar);
+    ctx2.b2cCachedForDefaultChar = defaultChar;
   }
   const state = {
-    b2c,
+    b2c: ctx2.b2cCached
+  };
+  return state;
+};
+var createEncodeStateMapped = (charsetCtx, options) => {
+  const ctx2 = (
+    /** @type {!MappedCharsetContext} */
+    charsetCtx
+  );
+  const defaultCharByte = options.defaultCharByte;
+  const defaultChar = getDefaultChar(defaultCharByte, DEFAULT_CHAR_BYTE);
+  const handler = typeof defaultCharByte === "function" ? defaultCharByte : null;
+  const state = {
+    r: 0,
+    w: 0,
+    c2b: ctx2.c2b,
     defaultChar,
-    handler,
-    decodeFunction: useNativeDecode ? nativeDecodeMapped : softwareDecodeMapped,
-    decoder,
-    leftover: NO_LEFTOVER
+    handler
+  };
+  return state;
+};
+var createEncodeStateMappedFast = (charsetCtx, options) => {
+  const ctx2 = (
+    /** @type {!MappedCharsetContext} */
+    charsetCtx
+  );
+  const defaultCharByte = options.defaultCharByte;
+  const defaultChar = getDefaultChar(defaultCharByte, DEFAULT_CHAR_BYTE);
+  if (!ctx2.c2bCached || ctx2.c2bCachedForDefaultChar !== defaultChar) {
+    ctx2.c2bCached = createCachedForDefaultChar(ctx2.c2b, defaultChar);
+    ctx2.c2bCachedForDefaultChar = defaultChar;
+  }
+  const state = {
+    r: 0,
+    w: 0,
+    c2b: ctx2.c2bCached
   };
   return state;
 };
@@ -233,62 +461,35 @@ var createC2B = (b2c) => {
   }
   return c2b;
 };
-var createEncodeStateMapped = (charsetCtx, options) => {
-  const ctx = (
-    /** @type {!MappedCharsetContext} */
-    charsetCtx
-  );
-  const b2c = ctx.b2c;
-  if (!ctx.c2b) {
-    ctx.c2b = createC2B(b2c);
-  }
-  const c2b = ctx.c2b;
-  const defaultCharByte = options.defaultCharByte;
-  let defaultChar = DEFAULT_CHAR_BYTE;
-  let handler = null;
-  if (typeof defaultCharByte === "string") {
-    if (defaultCharByte.length) {
-      defaultChar = defaultCharByte.charCodeAt(0);
-    }
-  } else if (typeof defaultCharByte === "function") {
-    handler = defaultCharByte;
-  }
-  const state = {
-    c2b,
-    defaultChar,
-    handler
+var createCharsetMapped = (charsetName, b2c, decoderOp, decoderOpFast, encoderOp, encoderOpFast) => {
+  const ctx2 = {
+    //
+    charsetName,
+    b2c,
+    b2cCached: null,
+    b2cCachedForDefaultChar: 0,
+    c2b: createC2B(b2c),
+    c2bCached: null,
+    c2bCachedForDefaultChar: 0
   };
-  return state;
-};
-var decodeMapped = (decodeState, input) => {
-  const { decodeFunction } = (
-    /** @type {!DecodeStateMapped} */
-    decodeState
+  return createEncodingFast(
+    //
+    ctx2,
+    decoderOp,
+    decoderOpFast,
+    encoderOp,
+    encoderOpFast
   );
-  return decodeFunction(decodeState, input);
-};
-var decoderOpMapped = {
-  createDecodeStateFn: createDecodeStateMapped,
-  decodeFn: decodeMapped
-};
-var createCharsetMapped = (charsetName, b2c, softwareDecode, encoderOp3) => {
-  const nativeDecoderSupported = isNativeDecoderSupported(charsetName);
-  const ctx = { charsetName, nativeDecoderSupported, b2c, c2b: null, softwareDecodeMapped: softwareDecode };
-  return createEncoding(ctx, decoderOpMapped, encoderOp3);
 };
 
 // src/dbcs.mjs
-var decodeDBCS = (decodeState, array) => {
+var decodeDBCS = (decodeState, buf) => {
   const state = (
     /** @type {!DecodeStateMapped} */
     decodeState
   );
   const { b2c, defaultChar, handler, leftover } = state;
-  if (!array) {
-    state.leftover = NO_LEFTOVER;
-    return leftover === NO_LEFTOVER ? "" : String.fromCharCode(handler?.(leftover, -1) ?? defaultChar);
-  }
-  const len = array.length;
+  const len = buf.length;
   if (len === 0) {
     return "";
   }
@@ -297,7 +498,7 @@ var decodeDBCS = (decodeState, array) => {
   let j = 0;
   let lead;
   if (leftover === NO_LEFTOVER) {
-    lead = array[0];
+    lead = buf[0];
   } else {
     state.leftover = NO_LEFTOVER;
     lead = leftover;
@@ -308,7 +509,7 @@ var decodeDBCS = (decodeState, array) => {
     if (isMapped(ch)) {
       u16[j++] = ch;
     } else if (i + 1 < len) {
-      const trail = array[i + 1];
+      const trail = buf[i + 1];
       const code = lead << 8 | trail;
       ch = b2c[code];
       if (isMapped(ch)) {
@@ -323,53 +524,72 @@ var decodeDBCS = (decodeState, array) => {
     }
     i++;
     if (i < len) {
-      lead = array[i];
+      lead = buf[i];
     } else {
       break;
     }
   }
   return getString(u16.subarray(0, j));
 };
-var encodeIntoDBCS = (encodeState, src, dst) => {
-  const { c2b, defaultChar, handler } = (
+var decodeEndDBCS = (decodeState) => {
+  const state = (
+    /** @type {!DecodeStateMapped} */
+    decodeState
+  );
+  const leftover = state.leftover;
+  state.leftover = NO_LEFTOVER;
+  return leftover === NO_LEFTOVER ? "" : String.fromCharCode(state.handler?.(leftover, -1) ?? state.defaultChar);
+};
+var decoderOpDBCS = createDecoderOperations(
+  //
+  createDecodeStateMapped,
+  decodeDBCS,
+  decodeEndDBCS
+);
+var encodeIntoDBCS = (encodeState, str, buf) => {
+  const state = (
     /** @type {!EncodeStateMapped} */
     encodeState
   );
+  const { c2b, defaultChar, handler } = state;
   let i = 0;
   let j = 0;
-  const srcLen = src.length;
-  const dstLen = dst.length;
+  const srcLen = str.length;
+  const dstLen = buf.length;
   const dstLen1 = dstLen - 1;
   for (; i < srcLen; i++) {
-    const ch = src.charCodeAt(i);
+    const ch = str.charCodeAt(i);
     const val = c2b[ch];
     const value = isMapped(val) ? val : handler?.(ch, i) ?? defaultChar;
     if (value > 255) {
       if (j >= dstLen1) {
         break;
       }
-      dst[j] = value >> 8;
-      dst[j + 1] = value;
+      buf[j] = value >> 8;
+      buf[j + 1] = value;
       j += 2;
     } else {
       if (j >= dstLen) {
         break;
       }
-      dst[j] = value;
+      buf[j] = value;
       j += 1;
     }
   }
-  return { read: i, written: j };
+  state.r += i;
+  state.w += j;
 };
-var byteLengthMaxDBCS = (encodeState, op, text) => text.length * 2;
-var encoderOp = {
-  createEncodeStateFn: createEncodeStateMapped,
-  encodeIntoFn: encodeIntoDBCS,
-  byteLengthMaxFn: byteLengthMaxDBCS,
-  byteLengthFn: byteLengthDefault
-};
-var createB2C = () => new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
-var applyMappingTable = (b2c, parent, mappingTable) => {
+var encoderOpDBCS = createEncoderOperations(
+  //
+  createEncodeStateMapped,
+  encodeIntoDBCS,
+  flushIntoDummy,
+  byteLengthMax2X,
+  byteLengthDefault
+);
+var createTableDBCS = (ctx2, options) => {
+  const { parent, mappingTable } = ctx2;
+  const b2c = new Uint16Array(65536).fill(REPLACEMENT_CHARACTER_CODE);
   for (let rangeIdx = 0; rangeIdx < mappingTable.length; rangeIdx++) {
     const range = mappingTable[rangeIdx];
     const start = Number.parseInt(
@@ -396,7 +616,7 @@ var applyMappingTable = (b2c, parent, mappingTable) => {
     }
   }
   if (parent) {
-    const parentB2C = parent.createB2C();
+    const parentB2C = parent.createTable();
     for (let i = 0; i < parentB2C.length; i++) {
       const parentCH = parentB2C[i];
       if (isMapped(parentCH)) {
@@ -407,6 +627,7 @@ var applyMappingTable = (b2c, parent, mappingTable) => {
       }
     }
   }
+  return b2c;
 };
 var DBCS = class {
   /**
@@ -416,32 +637,39 @@ var DBCS = class {
    */
   constructor(charsetName, parent, mappingTable) {
     this.charsetName = charsetName;
-    this.parent = parent;
-    this.mappingTable = mappingTable;
+    this.ctx = { parent, mappingTable };
   }
   /**
    * @override
+   * @param {!ns.Options} [options]
    * @return {!ns.Encoding}
    */
   // @ts-expect-error
-  create() {
-    return createCharsetMapped(this.charsetName, this.createB2C(), decodeDBCS, encoderOp);
+  create(options) {
+    return createCharsetMapped(
+      //
+      this.charsetName,
+      this.createTable(options),
+      decoderOpDBCS,
+      decoderOpDBCS,
+      encoderOpDBCS,
+      encoderOpDBCS
+    );
   }
   /**
    * @override
+   * @param {!ns.Options} [options]
    * @return {!Uint16Array}
    */
   // @ts-expect-error
-  createB2C() {
-    const b2c = createB2C();
-    applyMappingTable(b2c, this.parent, this.mappingTable);
-    return b2c;
+  createTable(options) {
+    return createTableDBCS(this.ctx, options);
   }
 };
 
-// src/iconv-tiny.mjs
+// src/iconv.mjs
 var canonicalize = (encoding) => encoding.toLowerCase().replace(/[^a-z0-9]/gu, "").replace(/(?<!\d)0+/gu, "");
-var IconvTiny = class {
+var Iconv = class {
   /**
    * @param {!Object<string, !ns.EncodingFactory>} [encodings]
    * @param {string} [aliases]
@@ -462,25 +690,27 @@ var IconvTiny = class {
   }
   /**
    * @override
-   * @param {!Uint8Array} array
+   * @param {!Uint8Array} buf
    * @param {string} encoding
    * @param {!ns.OptionsAndDecoderOptions} [options]
    * @return {string}
    */
   // @ts-expect-error
-  decode(array, encoding, options) {
-    return this.getEncoding(encoding, options).decode(array, options);
+  decode(buf, encoding, options) {
+    const enc = this.getEncoding(encoding, options);
+    const str = enc.decode(buf, options);
+    return str;
   }
   /**
    * @override
-   * @param {string} content
+   * @param {string} str
    * @param {string} encoding
    * @param {!ns.OptionsAndEncoderOptions} [options]
    * @return {!Uint8Array}
    */
   // @ts-expect-error
-  encode(content, encoding, options) {
-    return this.getEncoding(encoding, options).encode(content, options);
+  encode(str, encoding, options) {
+    return this.getEncoding(encoding, options).encode(str, options);
   }
   /**
    * @override
@@ -504,84 +734,148 @@ var IconvTiny = class {
     return encoding;
   }
 };
-var createIconv = (encodings2, aliases2) => new IconvTiny(encodings2, aliases2);
+var createIconv = (encodings2, aliases2) => new Iconv(encodings2, aliases2);
 
 // src/sbcs.mjs
-var softwareDecodeSBCS = (decodeState, input) => {
-  if (!input) {
-    return "";
-  }
-  const { b2c, defaultChar, handler } = (
+var decodeSBCS = (decodeState, buf) => {
+  const state = (
     /** @type {!DecodeStateMapped} */
     decodeState
   );
-  const len = input.length;
-  const u16 = new Uint16Array(len);
-  for (let i = 0; i < len; i++) {
-    const byte = input[i];
-    const ch = b2c[byte];
-    u16[i] = isMapped(ch) ? ch : handler?.(byte, i) ?? defaultChar;
+  const b2c = state.b2c;
+  const defaultChar = state.defaultChar;
+  const handler = (
+    /** @type {!ns.DefaultFunction} */
+    state.handler
+  );
+  const u16 = new Uint16Array(buf.length);
+  for (let i = 0; i < buf.length; i++) {
+    const bt = buf[i];
+    const ch = b2c[bt];
+    u16[i] = isMapped(ch) ? ch : handler(bt, i) ?? defaultChar;
   }
-  return getString(u16);
+  return Buffer ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
 };
-var encodeIntoSBCS = (encodeState, src, dst) => {
-  const { c2b, defaultChar, handler } = (
+var decoderOpSBCS = createDecoderOperations(
+  //
+  createDecodeStateMapped,
+  decodeSBCS,
+  decodeEndDummy
+);
+var decodeSBCSFast = (decodeState, buf) => {
+  const state = (
+    /** @type {!DecodeStateMappedFast} */
+    decodeState
+  );
+  const b2c = state.b2c;
+  const u16 = new Uint16Array(buf.length);
+  for (let i = 0; i < buf.length; i++) {
+    const bt = buf[i];
+    const ch = b2c[bt];
+    u16[i] = ch;
+  }
+  return Buffer ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
+};
+var decoderOpSBCSFast = createDecoderOperations(
+  //
+  createDecodeStateMappedFast,
+  decodeSBCSFast,
+  decodeEndDummy
+);
+var encodeIntoSBCS = (encodeState, str, buf) => {
+  const state = (
     /** @type {!EncodeStateMapped} */
     encodeState
   );
-  const len = Math.min(src.length, dst.length);
+  const c2b = state.c2b;
+  const defaultChar = state.defaultChar;
+  const handler = (
+    /** @type {!ns.DefaultFunction} */
+    state.handler
+  );
+  const len = Math.min(str.length, buf.length);
   for (let i = 0; i < len; i++) {
-    const ch = src.charCodeAt(i);
-    const byte = c2b[ch];
-    dst[i] = isMapped(byte) ? byte : handler?.(ch, i) ?? defaultChar;
+    const ch = str.charCodeAt(i);
+    const bt = c2b[ch];
+    buf[i] = isMapped(bt) ? bt : handler(ch, i) ?? defaultChar;
   }
-  return { read: len, written: len };
+  state.r += len;
+  state.w += len;
 };
-var byteLengthSBCS = (encodeState, op, text) => text.length;
-var encoderOp2 = {
-  createEncodeStateFn: createEncodeStateMapped,
-  encodeIntoFn: encodeIntoSBCS,
-  byteLengthMaxFn: byteLengthSBCS,
-  byteLengthFn: byteLengthSBCS
-};
-var createB2C2 = () => new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
-var applySymbols = (b2c, symbols) => {
-  let i = 0;
-  while (i < 256 - symbols.length) {
-    b2c[i] = i++;
+var encoderOpSBCS = createEncoderOperations(
+  //
+  createEncodeStateMapped,
+  encodeIntoSBCS,
+  flushIntoDummy,
+  byteLengthMax1X,
+  byteLengthMax1X
+);
+var encodeIntoSBCSFast = (encodeState, str, buf) => {
+  const state = (
+    /** @type {!EncodeStateMappedFast} */
+    encodeState
+  );
+  const { c2b } = state;
+  const len = Math.min(str.length, buf.length);
+  for (let i = 0; i < len; i++) {
+    const ch = str.charCodeAt(i);
+    const bt = c2b[ch];
+    buf[i] = bt;
   }
-  let j = 0;
-  while (i < 256) {
-    b2c[i++] = symbols.charCodeAt(j++);
-  }
+  state.r += len;
+  state.w += len;
 };
-var applyDiff = (b2c, diff) => {
-  let i = 0;
-  while (i < diff.length) {
-    b2c[diff.charCodeAt(i)] = diff.charCodeAt(i + 1);
-    i += 2;
-  }
-};
-var replaceSpecials = (b2c) => {
-  let i = 128;
-  while (i < 256) {
-    const ch = b2c[i];
-    if (ch === " ".charCodeAt(0)) {
-      b2c[i] = i;
+var encoderOpSBCSFast = createEncoderOperations(
+  //
+  createEncodeStateMappedFast,
+  encodeIntoSBCSFast,
+  flushIntoDummy,
+  byteLengthMax1X,
+  byteLengthMax1X
+);
+var createTableSBCS = (ctx2, options) => {
+  const { symbols, diff } = ctx2;
+  const b2c = new Uint16Array(256).fill(REPLACEMENT_CHARACTER_CODE);
+  {
+    let i = 0;
+    while (i < 256 - symbols.length) {
+      b2c[i] = i++;
     }
-    if (ch === "?".charCodeAt(0)) {
-      b2c[i] = REPLACEMENT_CHARACTER_CODE;
+    let j = 0;
+    while (i < 256) {
+      b2c[i++] = symbols.charCodeAt(j++);
     }
-    i++;
   }
-};
-var applyOverrides = (b2c, overrides) => {
-  let k = 0;
-  while (k < overrides.length - 1) {
-    const code = overrides[k++];
-    const ch = overrides[k++];
-    b2c[Number(code)] = typeof ch === "number" ? ch : ch.charCodeAt(0);
+  {
+    let i = 0;
+    while (i < diff.length) {
+      b2c[diff.charCodeAt(i)] = diff.charCodeAt(i + 1);
+      i += 2;
+    }
   }
+  {
+    let i = 128;
+    while (i < 256) {
+      const ch = b2c[i];
+      if (ch === " ".charCodeAt(0)) {
+        b2c[i] = i;
+      }
+      if (ch === "?".charCodeAt(0)) {
+        b2c[i] = REPLACEMENT_CHARACTER_CODE;
+      }
+      i++;
+    }
+  }
+  {
+    const overrides = options?.overrides ?? [];
+    let k = 0;
+    while (k < overrides.length - 1) {
+      const code = overrides[k++];
+      const ch = overrides[k++];
+      b2c[Number(code)] = typeof ch === "number" ? ch : ch.charCodeAt(0);
+    }
+  }
+  return b2c;
 };
 var SBCS = class {
   /**
@@ -591,8 +885,7 @@ var SBCS = class {
    */
   constructor(charsetName, symbols, diff) {
     this.charsetName = charsetName;
-    this.symbols = symbols;
-    this.diff = diff ?? "";
+    this.ctx = { symbols, diff: diff ?? "" };
   }
   /**
    * @override
@@ -601,7 +894,15 @@ var SBCS = class {
    */
   // @ts-expect-error
   create(options) {
-    return createCharsetMapped(this.charsetName, this.createB2C(options), softwareDecodeSBCS, encoderOp2);
+    return createCharsetMapped(
+      //
+      this.charsetName,
+      this.createTable(options),
+      decoderOpSBCS,
+      decoderOpSBCSFast,
+      encoderOpSBCS,
+      encoderOpSBCSFast
+    );
   }
   /**
    * @override
@@ -609,323 +910,299 @@ var SBCS = class {
    * @return {!Uint16Array}
    */
   // @ts-expect-error
-  createB2C(options) {
-    const { symbols, diff } = this;
-    const b2c = createB2C2();
-    applySymbols(b2c, symbols);
-    applyDiff(b2c, diff);
-    replaceSpecials(b2c);
-    applyOverrides(b2c, options?.overrides ?? []);
-    return b2c;
+  createTable(options) {
+    return createTableSBCS(this.ctx, options);
   }
 };
 
 // src/unicode.mjs
-var MAX_BPM = 65535;
-var MAX_CODE_POINT = 1114111;
-var BOM_CHAR = "\uFEFF";
-var STRIP_BOM_DEFAULT = true;
-var ADD_BOM_DEFAULT = false;
-var HIGH_SURROGATE_FROM = 55296;
-var LOW_SURROGATE_FROM = 56320;
-var put16LE = (src, i, dst, j) => {
-  const cp = src.charCodeAt(i);
-  dst[j] = cp;
-  dst[j + 1] = cp >> 8;
-  return 0;
-};
-var put16BE = (src, i, dst, j) => {
-  const cp = src.charCodeAt(i);
-  dst[j] = cp >> 8;
-  dst[j + 1] = cp;
-  return 0;
-};
-var put32LE = (src, i, dst, j) => {
-  const cp = (
-    /** @type {number} */
-    src.codePointAt(i)
-  );
-  dst[j] = cp;
-  dst[j + 1] = cp >> 8;
-  dst[j + 2] = cp >> 16;
-  dst[j + 3] = cp >> 24;
-  return cp > 65535 ? 1 : 0;
-};
-var put32BE = (src, i, dst, j) => {
-  const cp = (
-    /** @type {number} */
-    src.codePointAt(i)
-  );
-  dst[j] = cp >> 24;
-  dst[j + 1] = cp >> 16;
-  dst[j + 2] = cp >> 8;
-  dst[j + 3] = cp;
-  return cp > 65535 ? 1 : 0;
-};
-var get32LE = (src, i) => (src[i] | src[i + 1] << 8 | src[i + 2] << 16 | src[i + 3] << 24) >>> 0;
-var get32BE = (src, i) => (src[i] << 24 | src[i + 1] << 16 | src[i + 2] << 8 | src[i + 3]) >>> 0;
-var appendCodePoint = (dst, j, cp) => {
-  if (cp <= MAX_BPM) {
-    dst[j] = cp;
-    dst[j + 1] = cp >> 8;
-    return 2;
-  }
-  if (cp > MAX_CODE_POINT) {
-    dst[j] = REPLACEMENT_CHARACTER_CODE;
-    dst[j + 1] = REPLACEMENT_CHARACTER_CODE >> 8;
-    return 2;
-  }
-  cp -= 65536;
-  const high = HIGH_SURROGATE_FROM | cp >> 10;
-  const low = LOW_SURROGATE_FROM | cp & 1023;
-  dst[j] = high;
-  dst[j + 1] = high >> 8;
-  dst[j + 2] = low;
-  dst[j + 3] = low >> 8;
-  return 4;
-};
-var createDecodeStateUTF8 = (charsetCtx, options) => {
-  const noBOM = !(options.stripBOM ?? STRIP_BOM_DEFAULT);
-  const state = {
-    decoder: new TextDecoder("UTF-8", { ignoreBOM: noBOM })
+var createUnicodeEncoding = (name, littleEndian, decoderOp, encoderOp) => {
+  const charsetName = "UTF-" + name + (littleEndian ? "LE" : "BE");
+  const ctx2 = {
+    charsetName,
+    littleEndian
   };
-  return state;
-};
-var decodeUTF8 = (decodeState, input) => {
-  const state = (
-    /** @type {!DecodeStateUTF8} */
-    decodeState
+  return createEncoding(
+    //
+    ctx2,
+    decoderOp,
+    encoderOp
   );
-  return state.decoder.decode(input, { stream: Boolean(input) });
 };
-var decoderOpUTF8 = {
-  createDecodeStateFn: createDecodeStateUTF8,
-  decodeFn: decodeUTF8
-};
-var createEncodeStateUTF8 = (charsetCtx, options) => {
-  const doBOM = options.addBOM ?? ADD_BOM_DEFAULT;
-  const state = {
-    doBOM,
-    appendBOM: doBOM,
-    encoder: new TextEncoder(),
-    highSurrogate: ""
-  };
-  return state;
-};
-var encodeIntoUTF8 = (encodeState, src, dst) => {
-  const state = (
-    /** @type {!EncodeStateUTF8} */
-    encodeState
-  );
-  const { appendBOM } = state;
-  let j = 0;
-  if (appendBOM) {
-    if (dst.length < 3) {
-      return { read: 0, written: 0 };
-    }
-    dst[0] = 239;
-    dst[1] = 187;
-    dst[2] = 191;
-    j += 3;
-    state.appendBOM = false;
-  }
-  if (state.highSurrogate) {
-    src = state.highSurrogate + src;
-    state.highSurrogate = "";
-  }
-  const len1 = src.length - 1;
-  if (src.length > 0) {
-    const code = src.charCodeAt(len1);
-    if (code >= HIGH_SURROGATE_FROM && code < LOW_SURROGATE_FROM) {
-      state.highSurrogate = src.charAt(len1);
-      src = src.slice(0, len1);
-    }
-  }
-  const { read, written } = state.encoder.encodeInto(src, dst.subarray(j));
-  return { read: read + (state.highSurrogate ? 1 : 0), written: written + j };
-};
-var byteLengthMaxUTF8 = (encodeState, op, text) => {
-  const state = (
-    /** @type {!EncodeStateUTF8} */
-    encodeState
-  );
-  return (state.doBOM ? 4 : 0) + text.length * 4;
-};
-var encoderOpUTF8 = {
-  createEncodeStateFn: createEncodeStateUTF8,
-  encodeIntoFn: encodeIntoUTF8,
-  byteLengthMaxFn: byteLengthMaxUTF8,
-  byteLengthFn: byteLengthDefault
-};
-var createDecodeStateUTF16 = (charsetCtx, options) => {
-  const ctx = (
-    /** @type {!UnicodeCharsetContext} */
+
+// src/utf16.mjs
+var decoderOpUTF16 = nativeDecoderOp;
+var createEncodeStateUTF16 = (charsetCtx, options) => {
+  const { littleEndian } = (
+    /** @type {!CharsetContextUnicode} */
     charsetCtx
   );
-  const noBOM = !(options.stripBOM ?? STRIP_BOM_DEFAULT);
-  const { bo } = ctx;
+  const appendBOM = options.addBOM ?? ADD_BOM_DEFAULT;
   const state = {
-    decoder: new TextDecoder("UTF-16" + ["LE", "BE"][bo], { ignoreBOM: noBOM })
+    r: 0,
+    w: 0,
+    appendBOM,
+    put: littleEndian ? put16LE : put16BE
   };
   return state;
 };
-var decodeUTF16 = (decodeState, input) => {
+var encodeIntoUTF16 = (encodeState, str, buf) => {
   const state = (
-    /** @type {!DecodeStateUTF16} */
-    decodeState
+    /** @type {!EncodeStateUTF16} */
+    encodeState
   );
-  return state.decoder.decode(input, { stream: Boolean(input) });
+  const { appendBOM, put } = state;
+  let j = 0;
+  if (appendBOM) {
+    if (buf.length < 2) {
+      return;
+    }
+    put(BOM_CHAR_CODE, buf, 0);
+    j += 2;
+    state.appendBOM = false;
+  }
+  let i = 0;
+  while (i < str.length) {
+    if (buf.length - j < 2) {
+      break;
+    }
+    const ch = str.charCodeAt(i);
+    put(ch, buf, j);
+    j += 2;
+    i++;
+  }
+  state.r += i;
+  state.w += j;
 };
-var decoderOpUTF16 = {
-  createDecodeStateFn: createDecodeStateUTF16,
-  decodeFn: decodeUTF16
-};
+var encoderOpUTF16 = createEncoderOperations(
+  //
+  createEncodeStateUTF16,
+  encodeIntoUTF16,
+  flushIntoDummy,
+  byteLengthMax2X,
+  byteLengthMax2X
+);
+var UTF_16LE = createUnicodeEncoding(16, true, decoderOpUTF16, encoderOpUTF16);
+var UTF_16BE = createUnicodeEncoding(16, false, decoderOpUTF16, encoderOpUTF16);
+
+// src/utf32.mjs
 var createDecodeStateUTF32 = (charsetCtx, options) => {
-  const ctx = (
-    /** @type {!UnicodeCharsetContext} */
+  const { littleEndian } = (
+    /** @type {!CharsetContextUnicode} */
     charsetCtx
   );
   const state = {
     leftover: new Uint8Array(4),
     leftoverSize: 0,
-    get32: ctx.bo ? get32BE : get32LE,
-    noBOM: !(options.stripBOM ?? STRIP_BOM_DEFAULT)
+    get32: littleEndian ? get32LE : get32BE,
+    removeBOM: options.stripBOM ?? STRIP_BOM_DEFAULT
   };
   return state;
 };
-var decodeUTF32 = (decodeState, input) => {
+var decodeUTF32 = (decodeState, buf) => {
   const state = (
     /** @type {!DecodeStateUTF32} */
     decodeState
   );
-  const { leftover, get32, noBOM } = state;
-  if (!input) {
-    if (state.leftoverSize) {
-      state.leftoverSize = 0;
-      return String.fromCharCode(REPLACEMENT_CHARACTER_CODE);
-    }
-    return "";
-  }
-  const dst = new Uint8Array(input.length + 4);
+  const { leftover, get32 } = state;
+  const u16 = new Uint16Array((buf.length >> 1) + 2);
   let i = 0;
   let j = 0;
   if (state.leftoverSize) {
-    while (state.leftoverSize < 4 && i < input.length) {
-      leftover[state.leftoverSize++] = input[i++];
+    while (state.leftoverSize < 4 && i < buf.length) {
+      leftover[state.leftoverSize++] = buf[i++];
     }
     if (state.leftoverSize < 4) {
       return "";
     }
-    j += appendCodePoint(dst, j, get32(leftover, 0));
+    j += appendCodePoint(get32(leftover, 0), u16, j);
   }
-  const max = input.length - 3;
-  for (; i < max; i += 4) {
-    j += appendCodePoint(dst, j, get32(input, i));
+  for (; i < buf.length - 3; i += 4) {
+    j += appendCodePoint(get32(buf, i), u16, j);
   }
-  state.leftoverSize = input.length - i;
+  state.leftoverSize = buf.length - i;
   if (state.leftoverSize) {
-    leftover.set(input.subarray(i));
+    leftover.set(buf.subarray(i));
   }
-  return new TextDecoder("UTF-16", { ignoreBOM: noBOM }).decode(dst.subarray(0, j));
+  let str = getString(u16.subarray(0, j));
+  if (state.removeBOM && str.charCodeAt(0) === BOM_CHAR_CODE) {
+    str = str.slice(1);
+    state.removeBOM = false;
+  }
+  return str;
 };
-var decoderOpUTF32 = {
-  createDecodeStateFn: createDecodeStateUTF32,
-  decodeFn: decodeUTF32
+var decodeEndUTF32 = (decodeState) => {
+  const state = (
+    /** @type {!DecodeStateUTF32} */
+    decodeState
+  );
+  if (state.leftoverSize) {
+    state.leftoverSize = 0;
+    return String.fromCharCode(REPLACEMENT_CHARACTER_CODE);
+  }
+  return "";
 };
-var createEncodeStateUTF = (charsetCtx, options) => {
-  const { i, bo } = (
-    /** @type {!UnicodeCharsetContext} */
+var decoderOpUTF32 = createDecoderOperations(
+  //
+  createDecodeStateUTF32,
+  decodeUTF32,
+  decodeEndUTF32
+);
+var createEncodeStateUTF32 = (charsetCtx, options) => {
+  const { littleEndian } = (
+    /** @type {!CharsetContextUnicode} */
     charsetCtx
   );
-  const doBOM = options.addBOM ?? ADD_BOM_DEFAULT;
   const state = {
-    doBOM,
-    appendBOM: doBOM,
-    sz: 1 << i + 1,
-    put: i ? bo ? put32BE : put32LE : bo ? put16BE : put16LE
+    r: 0,
+    w: 0,
+    appendBOM: options.addBOM ?? ADD_BOM_DEFAULT,
+    put: littleEndian ? put32LE : put32BE,
+    highSurrogate: 0
   };
   return state;
 };
-var encodeIntoUTF = (encodeState, src, dst) => {
+var encodeIntoUTF32 = (encodeState, str, buf) => {
   const state = (
-    /** @type {!EncodeStateUTF} */
+    /** @type {!EncodeStateUTF32} */
     encodeState
   );
-  const { appendBOM, sz, put } = state;
+  const { appendBOM, put } = state;
   let j = 0;
   if (appendBOM) {
-    if (dst.length < sz) {
-      return { read: 0, written: 0 };
+    if (buf.length < 4) {
+      return;
     }
-    put(BOM_CHAR, 0, dst, j);
-    j += sz;
+    put(BOM_CHAR_CODE, buf, 0);
+    j += 4;
     state.appendBOM = false;
   }
-  const max = Math.min(src.length, dst.length - j & ~(sz - 1));
-  for (let i = 0; i < max; i++, j += sz) {
-    i += put(src, i, dst, j);
+  let i = 0;
+  let k = 0;
+  if (state.highSurrogate) {
+    str = String.fromCharCode(state.highSurrogate) + str;
+    state.highSurrogate = 0;
+    k = 1;
   }
-  return { read: max, written: j };
+  while (i < str.length) {
+    const ch = (
+      /** @type {number} */
+      str.codePointAt(i)
+    );
+    if (i === str.length - 1 && ch > HIGH_SURROGATE_FROM) {
+      state.highSurrogate = ch;
+      break;
+    }
+    if (buf.length - j < 4) {
+      break;
+    }
+    put(ch, buf, j);
+    i += ch > 65535 ? 2 : 1;
+    j += 4;
+  }
+  state.r += i - k;
+  state.w += j;
 };
-var byteLengthMaxUTF = (encodeState, op, text) => {
+var flushIntoUTF32 = (encodeState, buf) => {
   const state = (
-    /** @type {!EncodeStateUTF} */
+    /** @type {!EncodeStateUTF32} */
     encodeState
   );
-  return (state.doBOM ? state.sz : 0) + text.length * state.sz;
+  const { put, highSurrogate } = state;
+  if (!highSurrogate) {
+    return;
+  }
+  if (buf.length < 4) {
+    return;
+  }
+  put(highSurrogate, buf, 0);
+  state.highSurrogate = 0;
+  state.r += 0;
+  state.w += 4;
 };
-var byteLengthUTF = (encodeState, op, text) => {
+var encoderOpUTF32 = createEncoderOperations(
+  //
+  createEncodeStateUTF32,
+  encodeIntoUTF32,
+  flushIntoUTF32,
+  byteLengthMax4X,
+  byteLengthDefault
+);
+var UTF_32LE = createUnicodeEncoding(32, true, decoderOpUTF32, encoderOpUTF32);
+var UTF_32BE = createUnicodeEncoding(32, false, decoderOpUTF32, encoderOpUTF32);
+
+// src/utf8.mjs
+var decoderOpUTF8 = nativeDecoderOp;
+var createEncodeStateUTF8 = (charsetCtx, options) => {
+  const appendBOM = options.addBOM ?? ADD_BOM_DEFAULT;
+  const state = {
+    r: 0,
+    w: 0,
+    appendBOM,
+    highSurrogate: ""
+  };
+  return state;
+};
+var encodeIntoUTF8 = (encodeState, str, buf) => {
   const state = (
-    /** @type {!EncodeStateUTF} */
+    /** @type {!EncodeStateUTF8} */
     encodeState
   );
-  if (state.sz === 4) {
-    return byteLengthDefault(state, op, text);
+  let j = 0;
+  if (state.appendBOM) {
+    if (buf.length < 3) {
+      return;
+    }
+    buf[0] = 239;
+    buf[1] = 187;
+    buf[2] = 191;
+    j = 3;
+    state.appendBOM = false;
   }
-  return byteLengthMaxUTF(state, op, text);
+  if (state.highSurrogate) {
+    str = state.highSurrogate + str;
+    state.highSurrogate = "";
+  }
+  let i = 0;
+  if (str.length > 0) {
+    const code = str.charCodeAt(str.length - 1);
+    if (code >= HIGH_SURROGATE_FROM && code < LOW_SURROGATE_FROM) {
+      state.highSurrogate = str.charAt(str.length - 1);
+      str = str.slice(0, str.length - 1);
+      i = 1;
+    }
+  }
+  const { read, written } = TEXT_ENCODER.encodeInto(str, buf.subarray(j));
+  state.r += read + i;
+  state.w += written + j;
 };
-var encoderOpUTF = {
-  createEncodeStateFn: createEncodeStateUTF,
-  encodeIntoFn: encodeIntoUTF,
-  byteLengthMaxFn: byteLengthMaxUTF,
-  byteLengthFn: byteLengthUTF
-};
-var CHARSET_CONFIG = [
-  {
-    i: 16,
-    decoderOp: decoderOpUTF16,
-    encoderOp: encoderOpUTF
-  },
-  {
-    i: 32,
-    decoderOp: decoderOpUTF32,
-    encoderOp: encoderOpUTF
-  },
-  {
-    i: 8,
-    decoderOp: decoderOpUTF8,
-    encoderOp: encoderOpUTF8
-  }
-];
-var Unicode = class {
-  /**
-   * @param {number} i
-   * @param {number} bo
-   */
-  constructor(i, bo) {
-    const cfg = CHARSET_CONFIG[i];
-    const ctx = { charsetName: "UTF-" + cfg.i + ["LE", "BE", ""][bo], i, bo };
-    this.encoding = createEncoding(ctx, cfg.decoderOp, cfg.encoderOp);
-  }
-  /**
-   * @override
-   * @return {!ns.Encoding}
-   */
-  // @ts-expect-error
-  create() {
-    return this.encoding;
+var flushIntoUTF8 = (encodeState, buf) => {
+  const state = (
+    /** @type {!EncodeStateUTF8} */
+    encodeState
+  );
+  if (state.highSurrogate) {
+    const { read, written } = TEXT_ENCODER.encodeInto(state.highSurrogate, buf);
+    state.highSurrogate = "";
+    state.r += 1 + read;
+    state.w += written;
   }
 };
+var encoderOpUTF8 = createEncoderOperations(
+  //
+  createEncodeStateUTF8,
+  encodeIntoUTF8,
+  flushIntoUTF8,
+  byteLengthMax4X,
+  byteLengthDefault
+);
+var ctx = { charsetName: "UTF-8" };
+var UTF_8 = createEncoding(
+  //
+  ctx,
+  decoderOpUTF8,
+  encoderOpUTF8
+);
 
 // dist/main.mjs
 var US_ASCII = new SBCS("US-ASCII", "?".repeat(128));
@@ -1101,11 +1378,11 @@ var CP932 = new DBCS("CP932", SHIFT_JIS, [
   ["fb80", "祥禔福禛竑竧靖竫箞精絈絜綷綠緖繒罇羡羽茁荢荿菇菶葈蒴蕓蕙蕫﨟薰蘒﨡蠇裵訒訷詹誧誾諟諸諶譓譿賰賴贒赶﨣軏﨤逸遧郞都鄕鄧釚釗釞釭釮釤釥鈆鈐鈊鈺鉀鈼鉎鉙鉑鈹鉧銧鉷鉸鋧鋗鋙鋐﨧鋕鋠鋓錥錡鋻﨨錞鋿錝錂鍰鍗鎤鏆鏞鏸鐱鑅鑈閒隆﨩隝隯霳霻靃靍靏靑靕顗顥飯飼餧館馞驎髙"],
   ["fc40", "髜魵魲鮏鮱鮻鰀鵰鵫鶴鸙黑"]
 ]);
-var UTF8 = new Unicode(2, 2);
-var UTF16LE2 = new Unicode(0, 0);
-var UTF16BE = new Unicode(0, 1);
-var UTF32LE = new Unicode(1, 0);
-var UTF32BE = new Unicode(1, 1);
+var UTF8 = new Singleton(UTF_8);
+var UTF16LE2 = new Singleton(UTF_16LE);
+var UTF16BE = new Singleton(UTF_16BE);
+var UTF32LE = new Singleton(UTF_32LE);
+var UTF32BE = new Singleton(UTF_32BE);
 var encodings = { US_ASCII, ISO_8859_1, ISO_8859_2, ISO_8859_3, ISO_8859_4, ISO_8859_5, ISO_8859_6, ISO_8859_7, ISO_8859_8, ISO_8859_9, ISO_8859_10, ISO_8859_11, ISO_8859_13, ISO_8859_14, ISO_8859_15, ISO_8859_16, CP037, CP424, CP500, CP875, CP1026, CP437, CP737, CP775, CP850, CP852, CP855, CP857, CP860, CP861, CP862, CP863, CP864, CP865, CP866, CP869, CP874, CP1250, CP1251, CP1252, CP1253, CP1254, CP1255, CP1256, CP1257, CP1258, MAC_CYRILLIC, MAC_GREEK, MAC_ICELAND, MAC_LATIN2, MAC_ROMAN, MAC_TURKISH, ATARIST, CP856, CP1006, KOI8_R, KOI8_U, KZ1048, NEXTSTEP, JIS_0201, SHIFT_JIS, CP932, UTF8, UTF16LE: UTF16LE2, UTF16BE, UTF32LE, UTF32BE };
 var aliases = "US-ASCII 646 ansix34 ascii ascii7 cp367 csascii default ibm367 iso646irv iso646us isoir6 us,ISO-8859-1 819 88591 cp819 csisolatin1 ibm819 isoir100 l1 latin1,ISO-8859-2 88592 912 cp912 csisolatin2 ibm912 isoir101 l2 latin2,ISO-8859-3 88593 913 cp913 csisolatin3 ibm913 isoir109 l3 latin3,ISO-8859-4 88594 914 cp914 csisolatin4 ibm914 isoir110 l4 latin4,ISO-8859-5 88595 915 cp915 csisolatincyrillic cyrillic ibm915 isoir144,ISO-8859-6 1089 88596 arabic asmo708 cp1089 csisolatinarabic ecma114 ibm1089 isoir127,ISO-8859-7 813 88597 cp813 csisolatingreek ecma118 elot928 greek greek8 ibm813 isoir126 suneugreek,ISO-8859-8 88598 916 cp916 csisolatinhebrew hebrew ibm916 isoir138,ISO-8859-9 88599 920 cp920 csisolatin5 ibm920 isoir148 l5 latin5,ISO-8859-10 csisolatin6 isoir157 l6 latin6,ISO-8859-11 xiso885911,ISO-8859-13 885913,ISO-8859-14 isoceltic isoir199 l8 latin8,ISO-8859-15 885915 923 cp923 csiso885915 csisolatin csisolatin9 ibm923 iso885915fdis l9 latin latin9,ISO-8859-16 csiso885916 iso8859162001 isoir226 l10 latin10,CP037 37 cpibm37 csebcdiccpca csebcdiccpnl csebcdiccpus csebcdiccpwt csibm37 ebcdiccpca ebcdiccpnl ebcdiccpus ebcdiccpwt ibm37,CP424 424 csibm424 ebcdiccphe ibm424,CP500 500 csibm500 ebcdiccpbh ebcdiccpch ibm500,CP875 875 ibm875 xibm875,CP1026 1026 ibm1026,CP437 437 cspc8codepage437 ibm437 windows437,CP737 737 ibm737 xibm737,CP775 775 ibm775,CP850 850 cspc850multilingual ibm850,CP852 852 cspcp852 ibm852,CP855 855 cspcp855 ibm855,CP857 857 csibm857 ibm857,CP860 860 csibm860 ibm860,CP861 861 cpis csibm861 ibm861,CP862 862 csibm862 cspc862latinhebrew ibm862,CP863 863 csibm863 ibm863,CP864 864 csibm864 ibm864,CP865 865 csibm865 ibm865,CP866 866 csibm866 ibm866,CP869 869 cpgr csibm869 ibm869,CP874 874 ibm874 xibm874,CP1250 cp5346 win1250 windows1250,CP1251 ansi1251 cp5347 win1251 windows1251,CP1252 cp5348 ibm1252 win1252 windows1252,CP1253 cp5349 win1253 windows1253,CP1254 cp5350 win1254 windows1254,CP1255 win1255 windows1255,CP1256 win1256 windows1256,CP1257 cp5353 win1257 windows1257,CP1258 win1258 windows1258,MAC-CYRILLIC xmaccyrillic,MAC-GREEK xmacgreek,MAC-ICELAND xmaciceland,MAC-LATIN2 maccentraleurope xmaccentraleurope,MAC-ROMAN xmacroman,MAC-TURKISH xmacturkish,ATARIST,CP856 856 ibm856 xibm856,CP1006 1006 ibm1006 xibm1006,KOI8-R cskoi8r koi8,KOI8-U cskoi8u,KZ1048 cskz1048 rk1048 strk10482002,NEXTSTEP we8nextstep,JIS-0201 cshalfwidthkatakana x201,SHIFT-JIS csshiftjis jis201 mskanji sjis xsjis,CP932 932 ms932 win932 windows31j windows932,UTF8 unicode11utf8,UTF16LE utf16,UTF16BE,UTF32LE utf32,UTF32BE";
 export {

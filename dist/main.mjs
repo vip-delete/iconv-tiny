@@ -1,4 +1,4 @@
-import { DBCS, canonicalize, createIconv, SBCS, Unicode } from "../src/index.mjs";
+import { Singleton, DBCS, canonicalize, createIconv, SBCS, UTF_16BE, UTF_16LE, UTF_32BE, UTF_32LE, UTF_8 } from "../src/index.mjs";
 export { canonicalize, createIconv };
 export const
 US_ASCII=new SBCS("US-ASCII","?".repeat(128)),
@@ -174,10 +174,10 @@ CP932=new DBCS("CP932",SHIFT_JIS,[
 ["fb80","祥禔福禛竑竧靖竫箞精絈絜綷綠緖繒罇羡羽茁荢荿菇菶葈蒴蕓蕙蕫﨟薰蘒﨡蠇裵訒訷詹誧誾諟諸諶譓譿賰賴贒赶﨣軏﨤逸遧郞都鄕鄧釚釗釞釭釮釤釥鈆鈐鈊鈺鉀鈼鉎鉙鉑鈹鉧銧鉷鉸鋧鋗鋙鋐﨧鋕鋠鋓錥錡鋻﨨錞鋿錝錂鍰鍗鎤鏆鏞鏸鐱鑅鑈閒隆﨩隝隯霳霻靃靍靏靑靕顗顥飯飼餧館馞驎髙"],
 ["fc40","髜魵魲鮏鮱鮻鰀鵰鵫鶴鸙黑"]
 ]),
-UTF8=new Unicode(2,2),
-UTF16LE=new Unicode(0,0),
-UTF16BE=new Unicode(0,1),
-UTF32LE=new Unicode(1,0),
-UTF32BE=new Unicode(1,1),
+UTF8=new Singleton(UTF_8),
+UTF16LE=new Singleton(UTF_16LE),
+UTF16BE=new Singleton(UTF_16BE),
+UTF32LE=new Singleton(UTF_32LE),
+UTF32BE=new Singleton(UTF_32BE),
 encodings={US_ASCII,ISO_8859_1,ISO_8859_2,ISO_8859_3,ISO_8859_4,ISO_8859_5,ISO_8859_6,ISO_8859_7,ISO_8859_8,ISO_8859_9,ISO_8859_10,ISO_8859_11,ISO_8859_13,ISO_8859_14,ISO_8859_15,ISO_8859_16,CP037,CP424,CP500,CP875,CP1026,CP437,CP737,CP775,CP850,CP852,CP855,CP857,CP860,CP861,CP862,CP863,CP864,CP865,CP866,CP869,CP874,CP1250,CP1251,CP1252,CP1253,CP1254,CP1255,CP1256,CP1257,CP1258,MAC_CYRILLIC,MAC_GREEK,MAC_ICELAND,MAC_LATIN2,MAC_ROMAN,MAC_TURKISH,ATARIST,CP856,CP1006,KOI8_R,KOI8_U,KZ1048,NEXTSTEP,JIS_0201,SHIFT_JIS,CP932,UTF8,UTF16LE,UTF16BE,UTF32LE,UTF32BE},
 aliases="US-ASCII 646 ansix34 ascii ascii7 cp367 csascii default ibm367 iso646irv iso646us isoir6 us,ISO-8859-1 819 88591 cp819 csisolatin1 ibm819 isoir100 l1 latin1,ISO-8859-2 88592 912 cp912 csisolatin2 ibm912 isoir101 l2 latin2,ISO-8859-3 88593 913 cp913 csisolatin3 ibm913 isoir109 l3 latin3,ISO-8859-4 88594 914 cp914 csisolatin4 ibm914 isoir110 l4 latin4,ISO-8859-5 88595 915 cp915 csisolatincyrillic cyrillic ibm915 isoir144,ISO-8859-6 1089 88596 arabic asmo708 cp1089 csisolatinarabic ecma114 ibm1089 isoir127,ISO-8859-7 813 88597 cp813 csisolatingreek ecma118 elot928 greek greek8 ibm813 isoir126 suneugreek,ISO-8859-8 88598 916 cp916 csisolatinhebrew hebrew ibm916 isoir138,ISO-8859-9 88599 920 cp920 csisolatin5 ibm920 isoir148 l5 latin5,ISO-8859-10 csisolatin6 isoir157 l6 latin6,ISO-8859-11 xiso885911,ISO-8859-13 885913,ISO-8859-14 isoceltic isoir199 l8 latin8,ISO-8859-15 885915 923 cp923 csiso885915 csisolatin csisolatin9 ibm923 iso885915fdis l9 latin latin9,ISO-8859-16 csiso885916 iso8859162001 isoir226 l10 latin10,CP037 37 cpibm37 csebcdiccpca csebcdiccpnl csebcdiccpus csebcdiccpwt csibm37 ebcdiccpca ebcdiccpnl ebcdiccpus ebcdiccpwt ibm37,CP424 424 csibm424 ebcdiccphe ibm424,CP500 500 csibm500 ebcdiccpbh ebcdiccpch ibm500,CP875 875 ibm875 xibm875,CP1026 1026 ibm1026,CP437 437 cspc8codepage437 ibm437 windows437,CP737 737 ibm737 xibm737,CP775 775 ibm775,CP850 850 cspc850multilingual ibm850,CP852 852 cspcp852 ibm852,CP855 855 cspcp855 ibm855,CP857 857 csibm857 ibm857,CP860 860 csibm860 ibm860,CP861 861 cpis csibm861 ibm861,CP862 862 csibm862 cspc862latinhebrew ibm862,CP863 863 csibm863 ibm863,CP864 864 csibm864 ibm864,CP865 865 csibm865 ibm865,CP866 866 csibm866 ibm866,CP869 869 cpgr csibm869 ibm869,CP874 874 ibm874 xibm874,CP1250 cp5346 win1250 windows1250,CP1251 ansi1251 cp5347 win1251 windows1251,CP1252 cp5348 ibm1252 win1252 windows1252,CP1253 cp5349 win1253 windows1253,CP1254 cp5350 win1254 windows1254,CP1255 win1255 windows1255,CP1256 win1256 windows1256,CP1257 cp5353 win1257 windows1257,CP1258 win1258 windows1258,MAC-CYRILLIC xmaccyrillic,MAC-GREEK xmacgreek,MAC-ICELAND xmaciceland,MAC-LATIN2 maccentraleurope xmaccentraleurope,MAC-ROMAN xmacroman,MAC-TURKISH xmacturkish,ATARIST,CP856 856 ibm856 xibm856,CP1006 1006 ibm1006 xibm1006,KOI8-R cskoi8r koi8,KOI8-U cskoi8u,KZ1048 cskz1048 rk1048 strk10482002,NEXTSTEP we8nextstep,JIS-0201 cshalfwidthkatakana x201,SHIFT-JIS csshiftjis jis201 mskanji sjis xsjis,CP932 932 ms932 win932 windows31j windows932,UTF8 unicode11utf8,UTF16LE utf16,UTF16BE,UTF32LE utf32,UTF32BE";

@@ -157,9 +157,9 @@ test("CP1251 overrides 2", () => {
 
 test("CP1251 byteLength", () => {
   const cp = CP1251.create();
-  expect(cp.newEncoder().byteLength("😀")).toBe(2);
-  expect(cp.newEncoder().byteLength("Привет")).toBe(6);
-  expect(cp.newEncoder().byteLength("你好")).toBe(2); // 2 code units
+  expect(cp.byteLength("😀")).toBe(2);
+  expect(cp.byteLength("Привет")).toBe(6);
+  expect(cp.byteLength("你好")).toBe(2); // 2 code units
 });
 
 test("CP1251 TextDecoder", () => {
@@ -264,8 +264,8 @@ test("US-ASCII", () => {
   // but "�" has no mapping at all and should be mapped to the default char
   expect(cp.encode("�")[0]).toBe(DEFAULT_CHAR_BYTE);
   expect(cp.encode("").length).toBe(0);
-  expect(cp.newEncoder().encode().length).toBe(0);
-  expect(cp.newDecoder().decode()).toBe("");
+  expect(cp.getEncoder().end().length).toBe(0);
+  expect(cp.getDecoder().end()).toBe("");
 
   const str = String.fromCharCode(REPLACEMENT_CHARACTER_CODE);
   const buf = new Uint8Array([65, 66, 67, 229]);

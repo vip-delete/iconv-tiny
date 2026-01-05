@@ -37,8 +37,8 @@ const compile = async (name, outputWrapper, outputFile, files) => {
         console.log(stderr);
       }
 
-      if (exitCode === 0 && !stderr.includes("100.0%")) {
-        reject(new Error("Need 100% type coverage"));
+      if (exitCode === 0 && !(stderr.includes("0 error(s)") && stderr.includes("0 warning(s)"))) {
+        reject(new Error("Need 0 errors and warnings"));
       }
 
       if (exitCode === 0) {
@@ -62,17 +62,21 @@ const exports = getExports("src/index.mjs");
 writeFileSync("./dist/exports.mjs", `import { ${exports.join(", ")} } from "../src/index.mjs";\n${exports.map((it) => `ns.${it} = ${it};\n`).join("")}`);
 
 // re-export functions only
-const outputWrapper = `const ns = {};\n%output%\nexport const { ${exports.filter(functionFilter).join(", ")} } = ns;\nconst { ${exports.filter((it) => !functionFilter(it)).join(", ")} } = ns;\n`;
+const outputWrapper = `const ns = {};\n{\n%output%\n}\nexport const { ${exports.filter(functionFilter).join(", ")} } = ns;\nconst { ${exports.filter((it) => !functionFilter(it)).join(", ")} } = ns;\n`;
 
 await compile("app", outputWrapper, "dist/cc.mjs", [
   "src/externs.mjs",
+  "src/iconv.mjs",
   "src/types.mjs",
   "src/commons.mjs",
-  "src/iconv-tiny.mjs",
+  "src/native.mjs",
   "src/mapped.mjs",
-  "src/unicode.mjs",
   "src/sbcs.mjs",
   "src/dbcs.mjs",
+  "src/unicode.mjs",
+  "src/utf8.mjs",
+  "src/utf16.mjs",
+  "src/utf32.mjs",
   "src/index.mjs",
   "dist/exports.mjs",
 ]);

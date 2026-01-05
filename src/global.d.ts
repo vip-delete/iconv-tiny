@@ -15,39 +15,67 @@ declare namespace ns {
    * @param encodings - A map of encodings to support.
    * @param aliases - Comma-separated groups, each containing space-separated aliases for the same encoding.
    */
-  export function createIconv(encodings?: { [key: string]: EncodingFactory }, aliases?: string): IconvTiny;
-
-  interface IconvTiny {
-    decode(array: Uint8Array, encoding: string, options?: OptionsAndDecoderOptions): string;
-    encode(content: string, encoding: string, options?: OptionsAndEncoderOptions): Uint8Array;
-    getEncoding(encoding: string, options?: Options): Encoding;
-  }
-
-  interface Encoding {
-    getName(): string;
-    decode(array: Uint8Array, options?: DecoderOptions): string;
-    encode(text: string, options?: EncoderOptions): Uint8Array;
-    newDecoder(options?: DecoderOptions): CharsetDecoder;
-    newEncoder(options?: EncoderOptions): CharsetEncoder;
-  }
+  export function createIconv(encodings?: { [key: string]: EncodingFactory }, aliases?: string): Iconv;
 
   interface EncodingFactory {
     create(options?: Options): Encoding;
   }
 
-  interface CharsetDecoder {
-    decode(array?: Uint8Array): string;
+  interface Iconv {
+    /** get/create an encoding, create a decoder, decode and flush */
+    decode(buf: Uint8Array, encoding: string, options?: OptionsAndDecoderOptions): string;
+    /** get/create an encoding, create a encoder, encode and flush */
+    encode(str: string, encoding: string, options?: OptionsAndEncoderOptions): Uint8Array;
+    /** get/create an encoding */
+    getEncoding(encoding: string, options?: Options): Encoding;
   }
 
-  interface CharsetEncoder {
-    encode(text?: string): Uint8Array;
-    encodeInto(text: string, dst: Uint8Array): TextEncoderEncodeIntoResult;
+  /** Encoding that doesn't keep any state */
+  interface Encoding {
+    getName(): string;
+
+    /** get/create a decoder, decode and flush */
+    decode(buf: Uint8Array, options?: DecodeOptions): string;
+    /** get/create a encoder, encode and flush */
+    encode(str: string, options?: EncodeOptions): Uint8Array;
+
     /**
-     * Similar to Buffer.byteLength;
-     * @param text - input to calculate the length of
+     * Similar to Buffer.byteLength.
+     *
+     * @param str - input to calculate the length of
      * @returns The number of bytes of the specified string
      */
-    byteLength(text: string): number;
+    byteLength(str: string): number;
+
+    // --- Low-level Stream APIs ---
+
+    /** create a decoder to keep the decoding state. */
+    getDecoder(options?: DecodeOptions): DecoderStream;
+    /** create an encoder to keep the encoding state. */
+    getEncoder(options?: EncodeOptions): EncoderStream;
+  }
+
+  /** Decoder to keep the decoding state */
+  interface DecoderStream {
+    /** decode, keep the leftover in the state */
+    write(buf: Uint8Array): string;
+    /** flush the leftover */
+    end(): string;
+  }
+
+  /** Encoder to keep the encoding state */
+  interface EncoderStream {
+    /** encode into a new array, keep the leftover in the state */
+    write(str: string): Uint8Array;
+    /** flush the leftover into a new array */
+    end(): Uint8Array;
+
+    // --- Low-Level Encoding APIs ---
+
+    /** encode into the given array, keep the leftover in the state */
+    encodeInto(str: string, buf: Uint8Array): TextEncoderEncodeIntoResult;
+    /** flush the leftover into the given array */
+    flushInto(buf: Uint8Array): TextEncoderEncodeIntoResult;
   }
 
   type TextEncoderEncodeIntoResult = {
@@ -55,11 +83,11 @@ declare namespace ns {
     written: number;
   }
 
-  type DecoderOptions = {
+  type DecodeOptions = {
     /**
      * Sets the replacement character used by the "decode" method for unmapped bytes (default: "�").
      */
-    defaultCharUnicode?: string | DefaultCharUnicodeFunction;
+    defaultCharUnicode?: string | DefaultFunction;
     /**
      * Specifies the behavior of the "decode" method (default: false)
      *
@@ -75,11 +103,11 @@ declare namespace ns {
     stripBOM?: boolean;
   };
 
-  type EncoderOptions = {
+  type EncodeOptions = {
     /**
      * Sets the replacement byte used by the "encode" method for unmapped symbols (default: "?").
      */
-    defaultCharByte?: string | DefaultCharByteFunction;
+    defaultCharByte?: string | DefaultFunction;
     /**
      * Unicode only. No BOM added by default, unless overridden by addBOM: true
      */
@@ -101,26 +129,12 @@ declare namespace ns {
   type Overrides = Array<number | string>;
 
   /**
-   * @param {number} input
-   * @param {number} index
-   * @returns {number}
+   * @param {number} input - input character code (0-65535) if encoding; or an input byte (0-255) if decoding
+   * @param {number} index - index of the character if encoding; or an index of the byte if decoding
+   * @returns {number} default byte (0-255) if encoding; or a default character code (0-65535) if decoding
    */
   type DefaultFunction = (input: number, index: number) => number | null | undefined;
 
-  /**
-   * @param {number} input - input character code (0-65536)
-   * @param {number} index - index of the character
-   * @returns {number} default byte (0-255)
-   */
-  type DefaultCharByteFunction = DefaultFunction;
-
-  /**
-   * @param {number} input - input byte (0-255)
-   * @param {number} index - index of the byte
-   * @returns {number} default character code (0-65536)
-   */
-  type DefaultCharUnicodeFunction = DefaultFunction;
-
-  type OptionsAndDecoderOptions = Options & DecoderOptions;
-  type OptionsAndEncoderOptions = Options & EncoderOptions;
+  type OptionsAndDecoderOptions = Options & DecodeOptions;
+  type OptionsAndEncoderOptions = Options & EncodeOptions;
 }

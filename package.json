@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "iconv-tiny",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Pure JS ESM Encodings for Browser and NodeJS",
   "sideEffects": false,
   "keywords": [
@@ -50,10 +50,10 @@
     "@vue/runtime-dom": "^3.5.26",
     "esbuild": "^0.27.x",
     "eslint": "^9.x",
-    "eslint-plugin-jsdoc": "^61.x",
+    "eslint-plugin-jsdoc": "^62.x",
     "express": "^5.x",
-    "google-closure-compiler": "^20251216.0.0",
-    "iconv-lite": "^0.7.1",
+    "google-closure-compiler": "^20260107.0.0",
+    "iconv-lite": "^0.7.2",
     "prettier": "^3.x",
     "serve-static": "^2.x",
     "tinybench": "^6.x",
