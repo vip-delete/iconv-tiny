@@ -43,7 +43,7 @@ or use CDN:
 <script type="importmap">
   {
     "imports": {
-      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.3.1/dist/iconv-tiny.mjs"
+      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.4.0/dist/iconv-tiny.mjs"
     }
   }
 </script>
@@ -88,16 +88,16 @@ import { UTF16LE } from "iconv-tiny";
 const utf16 = UTF16LE.create();
 
 // Create decoder, it works like TextDecoder with {stream: true} option.
-const decoder = utf16.newDecoder();
+const decoder = utf16.getDecoder();
 
 // Decode a fragment
-const part = decoder.decode(new Uint8Array([0x3d, 0xd8, 0x0a]));
+const part = decoder.write(new Uint8Array([0x3d, 0xd8, 0x0a]));
 
 // Decode the next fragment
-const str = decoder.decode(new Uint8Array([0xde])); // 😊
+const str = decoder.write(new Uint8Array([0xde])); // 😊
 
 // Finish stream decoding
-const tail = decoder.decode();
+const tail = decoder.end();
 ```
 
 See more [examples](examples).
@@ -141,7 +141,7 @@ decode('win1251')     ~120 Mb/s          ~220 Mb/s
 1. UTF-16 is an alias of UTF-16LE
 1. UTF-32 is an alias of UTF-32LE
 
-## Testing
+## Testing & Coverage
 
 ```
 $ git clone https://github.com/vip-delete/iconv-tiny.git
@@ -154,16 +154,22 @@ $ node tests\perf-test-unicode.mjs
 
 $ # To view test coverage:
 $ npm run coverage
-
-----------------|---------|----------|---------|---------|-------------------
-File            | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
-----------------|---------|----------|---------|---------|-------------------
-All files       |     100 |      100 |   96.72 |     100 |
- commons.mjs    |     100 |      100 |   81.81 |     100 |
- iconv-tiny.mjs |     100 |      100 |     100 |     100 |
- sbcs.mjs       |     100 |      100 |     100 |     100 |
- unicode.mjs    |     100 |      100 |     100 |     100 |
-----------------|---------|----------|---------|---------|-------------------
+-------------|---------|----------|---------|---------|-------------------
+File         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------|---------|----------|---------|---------|-------------------
+All files    |   97.86 |    95.55 |   96.66 |   97.93 |
+ commons.mjs |   93.83 |       95 |   97.29 |    94.2 | 36-41,53-56
+ dbcs.mjs    |   97.02 |    89.47 |     100 |   96.87 | 27,134,143
+ iconv.mjs   |     100 |      100 |     100 |     100 |
+ mapped.mjs  |     100 |      100 |     100 |     100 |
+ native.mjs  |     100 |      100 |     100 |     100 |
+ sbcs.mjs    |     100 |     90.9 |     100 |     100 | 36-66
+ types.mjs   |     100 |      100 |      50 |     100 |
+ unicode.mjs |     100 |      100 |     100 |     100 |
+ utf16.mjs   |     100 |      100 |     100 |     100 |
+ utf32.mjs   |   98.76 |     97.5 |     100 |   98.76 | 224
+ utf8.mjs    |     100 |      100 |     100 |     100 |
+-------------|---------|----------|---------|---------|-------------------
 ```
 
 ## Commands
