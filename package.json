@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "iconv-tiny",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Pure JS ESM Encodings for Browser and NodeJS",
   "sideEffects": false,
   "keywords": [
@@ -18,14 +18,18 @@
   "license": "MIT",
   "author": "vip.delete <vip.delete@gmail.com>",
   "files": [
-    "dist/iconv-tiny.d.mts",
-    "dist/iconv-tiny.mjs",
-    "dist/iconv-tiny.min.mjs",
+    "dist/unicode.iconv-tiny.d.mts",
+    "dist/unicode.iconv-tiny.mjs",
+    "dist/unicode.iconv-tiny.min.mjs",
+    "dist/whatwg.iconv-tiny.d.mts",
+    "dist/whatwg.iconv-tiny.mjs",
+    "dist/whatwg.iconv-tiny.min.mjs",
     "LICENSE",
     "README.md"
   ],
   "exports": {
-    ".": "./dist/iconv-tiny.mjs"
+    ".": "./dist/whatwg.iconv-tiny.mjs",
+    "./legacy": "./dist/unicode.iconv-tiny.mjs"
   },
   "repository": {
     "type": "git",
@@ -35,7 +39,7 @@
     "lint": "eslint",
     "generate": "node scripts/generate.mjs",
     "compile": "node scripts/compile.mjs",
-    "coverage": "vitest run --coverage main.test.mjs",
+    "coverage": "vitest run --coverage unicode.main.test.mjs",
     "test": "vitest run",
     "build": "npm run lint && npm run generate && npm run test && npm run coverage",
     "dev": "node scripts/server.mjs"
@@ -44,6 +48,7 @@
     "@stylistic/eslint-plugin": "^5.x",
     "@types/express": "^5.x",
     "@types/google-closure-compiler": "^20231112.0.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^25.x",
     "@types/serve-static": "^2.x",
     "@vitest/coverage-istanbul": "^4.x",
@@ -52,7 +57,7 @@
     "eslint": "^9.x",
     "eslint-plugin-jsdoc": "^62.x",
     "express": "^5.x",
-    "google-closure-compiler": "^20260107.0.0",
+    "google-closure-compiler": "^20260114.0.0",
     "iconv-lite": "^0.7.2",
     "prettier": "^3.x",
     "serve-static": "^2.x",

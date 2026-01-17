@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 
 if (process.env.NODE_ENV === "development") {
-  vi.mock("iconv-tiny", () => import("../dist/main.mjs"));
+  vi.mock("iconv-tiny", () => import("../dist/unicode.main.mjs"));
 }
 
 // import "./test-sbcs-mappings.mjs";

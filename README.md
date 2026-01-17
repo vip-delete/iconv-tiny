@@ -12,7 +12,7 @@
 [![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 [![npm version](https://img.shields.io/npm/v/iconv-tiny)](https://www.npmjs.com/package/iconv-tiny)
 
-Pure JS character encoding conversion as an ECMAScript Module (ESM). Auto-Generated from https://www.unicode.org/Public/MAPPINGS.
+Pure JS character encoding conversion as an ECMAScript Module (ESM). Auto-Generated from https://encoding.spec.whatwg.org and https://www.unicode.org/Public/MAPPINGS.
 
 ## About
 
@@ -118,7 +118,7 @@ All encodings are generated automatically from https://www.unicode.org/Public/MA
 
 **iconv-tiny** output is identical to **iconv-lite** output, see [tests/regression.test.mjs](tests/regression.test.mjs).
 
-## Encoding/decoding speed
+## Encoding/decoding speed in NodeJS
 
 Comparison with iconv-lite module (Core i7-7500U CPU @ 2.7GHz, Node v24.2.0). Note: your results may vary, so please always check on your hardware.
 
@@ -141,7 +141,11 @@ decode('win1251')     ~120 Mb/s          ~220 Mb/s
 1. UTF-16 is an alias of UTF-16LE
 1. UTF-32 is an alias of UTF-32LE
 
-## Testing & Coverage
+## Browser Testing
+
+https://vip-delete.github.io/iconv-tiny/tests/whatwg.html
+
+## NodeJS Testing & Coverage
 
 ```
 $ git clone https://github.com/vip-delete/iconv-tiny.git

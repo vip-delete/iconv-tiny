@@ -1,0 +1,7 @@
+#
+# Unicode keeps 0x80 UNDEFINED
+# iconv-lite maps it to itself
+# ... so do the same
+#
+
+0x80 0x80

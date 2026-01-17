@@ -1,5 +1,5 @@
 /**
- * iconv-tiny v1.4.0
+ * iconv-tiny v1.4.1
  * (c) 2025-present vip.delete <vip.delete@gmail.com>
  * @license MIT
  **/
@@ -51,6 +51,7 @@ var isNativeDecoderSupported = (charsetName) => {
 };
 
 // src/commons.mjs
+var bufferExists = typeof Buffer !== "undefined";
 var TEXT_ENCODER = new TextEncoder();
 var REPLACEMENT_CHARACTER_CODE = 65533;
 var DEFAULT_CHAR_BYTE = 63;
@@ -754,7 +755,7 @@ var decodeSBCS = (decodeState, buf) => {
     const ch = b2c[bt];
     u16[i] = isMapped(ch) ? ch : handler(bt, i) ?? defaultChar;
   }
-  return Buffer ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
+  return bufferExists ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
 };
 var decoderOpSBCS = createDecoderOperations(
   //
@@ -774,7 +775,7 @@ var decodeSBCSFast = (decodeState, buf) => {
     const ch = b2c[bt];
     u16[i] = ch;
   }
-  return Buffer ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
+  return bufferExists ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
 };
 var decoderOpSBCSFast = createDecoderOperations(
   //
@@ -1204,9 +1205,7 @@ var UTF_8 = createEncoding(
   encoderOpUTF8
 );
 
-// dist/main.mjs
-var US_ASCII = new SBCS("US-ASCII", "?".repeat(128));
-var ISO_8859_1 = new SBCS("ISO-8859-1", "");
+// dist/whatwg.main.mjs
 var ISO_8859_2 = new SBCS("ISO-8859-2", "Ą˘Ł ĽŚ  ŠŞŤŹ ŽŻ ą˛ł ľśˇ šşťź˝žżŔ  Ă ĹĆ Č Ę Ě  ĎĐŃŇ  Ő  ŘŮ Ű  Ţ ŕ  ă ĺć č ę ě  ďđńň  ő  řů ű  ţ˙");
 var ISO_8859_3 = new SBCS("ISO-8859-3", "Ħ˘  ?Ĥ  İŞĞĴ ?Ż ħ    ĥ  ışğĵ ?ż   ? ĊĈ         ?    Ġ  Ĝ    ŬŜ    ? ċĉ         ?    ġ  ĝ    ŭŝ˙");
 var ISO_8859_4 = new SBCS("ISO-8859-4", "ĄĸŖ ĨĻ  ŠĒĢŦ Ž  ą˛ŗ ĩļˇ šēģŧŊžŋĀ      ĮČ Ę Ė  ĪĐŅŌĶ     Ų   ŨŪ ā      įč ę ė  īđņōķ     ų   ũū˙");
@@ -1214,9 +1213,8 @@ var ISO_8859_5 = new SBCS("ISO-8859-5", "ЁЂЃЄЅІЇЈЉЊЋЌ ЎЏАБВГД
 var ISO_8859_6 = new SBCS("ISO-8859-6", "??? ???????، ?????????????؛???؟?ءآأؤإئابةتثجحخدذرزسشصضطظعغ?????ـفقكلمنهوىيًٌٍَُِّْ?????????????");
 var ISO_8859_7 = new SBCS("ISO-8859-7", "‘’ €₯    ͺ   ?―    ΄΅Ά ΈΉΊ Ό ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ?ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ?");
 var ISO_8859_8 = new SBCS("ISO-8859-8", "????????????????????????????????‗אבגדהוזחטיךכלםמןנסעףפץצקרשת??‎‏?", "¡?ª×º÷");
-var ISO_8859_9 = new SBCS("ISO-8859-9", "ış ", "ÐĞÝİÞŞðğ");
+var ISO_8859_8_I = new SBCS("ISO-8859-8-I", "????????????????????????????????‗אבגדהוזחטיךכלםמןנסעףפץצקרשת??‎‏?", "¡?ª×º÷");
 var ISO_8859_10 = new SBCS("ISO-8859-10", "ĄĒĢĪĨĶ ĻĐŠŦŽ ŪŊ ąēģīĩķ ļđšŧž―ūŋĀ      ĮČ Ę Ė    ŅŌ    Ũ Ų      ā      įč ę ė    ņō    ũ ų     ĸ");
-var ISO_8859_11 = new SBCS("ISO-8859-11", "กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู????฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛????");
 var ISO_8859_13 = new SBCS("ISO-8859-13", "æĄĮĀĆ  ĘĒČ ŹĖĢĶĪĻŠŃŅ Ō   ŲŁŚŪ ŻŽ ąįāć  ęēč źėģķīļšńņ ō   ųłśū żž’", "¡”¥„¨ØªŖ¯Æ´“¸øºŗ");
 var ISO_8859_14 = new SBCS("ISO-8859-14", "Ḃḃ ĊċḊ Ẁ ẂḋỲ  ŸḞḟĠġṀṁ ṖẁṗẃṠỳẄẅṡ                Ŵ      Ṫ      Ŷ                 ŵ      ṫ      ŷ ");
 var ISO_8859_15 = new SBCS("ISO-8859-15", "", "¤€¦Š¨š´Ž¸ž¼Œ½œ¾Ÿ");
@@ -1241,27 +1239,27 @@ var CP864 = new SBCS("CP864", "°·∙√▒─│┼┤┬├┴┐┌└┘β�
 var CP865 = new SBCS("CP865", "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø₧ƒáíóúñÑªº¿⌐¬½¼¡«¤░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ");
 var CP866 = new SBCS("CP866", "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмноп░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀рстуфхцчшщъыьэюяЁёЄєЇїЎў°∙·√№¤■ ");
 var CP869 = new SBCS("CP869", "??????Ά?·¬¦‘’Έ―ΉΊΪΌ??ΎΫ©Ώ²³ά£έήίϊΐόύΑΒΓΔΕΖΗ½ΘΙ«»░▒▓│┤ΚΛΜΝ╣║╗╝ΞΟ┐└┴┬├─┼ΠΡ╚╔╩╦╠═╬ΣΤΥΦΧΨΩαβγ┘┌█▄δε▀ζηθικλμνξοπρσςτ΄­±υφχ§ψ΅°¨ωϋΰώ■ ");
-var CP874 = new SBCS("CP874", "€????…???????????‘’“”•–—???????? กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู????฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛????");
-var CP1250 = new SBCS("CP1250", "€?‚?„…†‡?‰Š‹ŚŤŽŹ?‘’“”•–—?™š›śťžź ˇ˘Ł Ą    Ş    Ż  ˛ł     ąş Ľ˝ľżŔ  Ă ĹĆ Č Ę Ě  ĎĐŃŇ  Ő  ŘŮ Ű  Ţ ŕ  ă ĺć č ę ě  ďđńň  ő  řů ű  ţ˙");
-var CP1251 = new SBCS("CP1251", "ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—?™љ›њќћџ ЎўЈ Ґ  Ё Є    Ї  Ііґ   ё№є јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя");
-var CP1252 = new SBCS("CP1252", "€?‚ƒ„…†‡ˆ‰Š‹Œ?Ž??‘’“”•–—˜™š›œ?žŸ                                                                                                ");
-var CP1253 = new SBCS("CP1253", "€?‚ƒ„…†‡?‰?‹?????‘’“”•–—?™?›???? ΅Ά       ?    ―    ΄   ΈΉΊ Ό ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ?ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ?");
-var CP1254 = new SBCS("CP1254", "€?‚ƒ„…†‡ˆ‰Š‹Œ????‘’“”•–—˜™š›œ??Ÿ                                                Ğ            İŞ                 ğ            ış ");
-var CP1255 = new SBCS("CP1255", "€?‚ƒ„…†‡ˆ‰?‹?????‘’“”•–—˜™?›????    ₪     ×               ÷     ְֱֲֳִֵֶַָֹֺֻּֽ־ֿ׀ׁׂ׃װױײ׳״???????אבגדהוזחטיךכלםמןנסעףפץצקרשת??‎‏?");
+var CP874 = new SBCS("CP874", "‘’“”•–—         กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู????฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛????", "€…");
+var CP1250 = new SBCS("CP1250", "€ ‚ „…†‡ ‰Š‹ŚŤŽŹ ‘’“”•–— ™š›śťžź ˇ˘Ł Ą    Ş    Ż  ˛ł     ąş Ľ˝ľżŔ  Ă ĹĆ Č Ę Ě  ĎĐŃŇ  Ő  ŘŮ Ű  Ţ ŕ  ă ĺć č ę ě  ďđńň  ő  řů ű  ţ˙");
+var CP1251 = new SBCS("CP1251", "ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–— ™љ›њќћџ ЎўЈ Ґ  Ё Є    Ї  Ііґ   ё№є јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя");
+var CP1252 = new SBCS("CP1252", "€ ‚ƒ„…†‡ˆ‰Š‹Œ Ž  ‘’“”•–—˜™š›œ žŸ                                                                                                ");
+var CP1253 = new SBCS("CP1253", "€ ‚ƒ„…†‡ ‰ ‹     ‘’“”•–— ™ ›     ΅Ά       ?    ―    ΄   ΈΉΊ Ό ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ?ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ?");
+var CP1254 = new SBCS("CP1254", "€ ‚ƒ„…†‡ˆ‰Š‹Œ    ‘’“”•–—˜™š›œ  Ÿ                                                Ğ            İŞ                 ğ            ış ");
+var CP1255 = new SBCS("CP1255", "€ ‚ƒ„…†‡ˆ‰ ‹     ‘’“”•–—˜™ ›        ₪     ×               ÷     ְֱֲֳִֵֶַָֹֺֻּֽ־ֿ׀ׁׂ׃װױײ׳״???????אבגדהוזחטיךכלםמןנסעףפץצקרשת??‎‏?");
 var CP1256 = new SBCS("CP1256", "€پ‚ƒ„…†‡ˆ‰ٹ‹Œچژڈگ‘’“”•–—ک™ڑ›œ‌‍ں ،        ھ               ؛    ؟ہءآأؤإئابةتثجحخدذرزسشصض طظعغـفقك ل منهو     ىي  ًٌٍَ ُِ ّ ْ  ‎‏ے");
-var CP1257 = new SBCS("CP1257", "€?‚?„…†‡?‰?‹?¨ˇ¸?‘’“”•–—?™?›?¯˛? ?   ?  Ø Ŗ    Æ        ø ŗ    æĄĮĀĆ  ĘĒČ ŹĖĢĶĪĻŠŃŅ Ō   ŲŁŚŪ ŻŽ ąįāć  ęēč źėģķīļšńņ ō   ųłśū żž˙");
-var CP1258 = new SBCS("CP1258", "€?‚ƒ„…†‡ˆ‰?‹Œ????‘’“”•–—˜™?›œ??Ÿ                                   Ă        ̀   Đ ̉  Ơ       Ữ    ă        ́   đ ̣  ơ       ư₫ ");
-var MAC_CYRILLIC = new SBCS("MAC-CYRILLIC", "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ†°  §•¶І® ™Ђђ≠Ѓѓ∞ ≤≥і ∂ЈЄєЇїЉљЊњјЅ¬√ƒ≈∆«»… ЋћЌќѕ–—“”‘’÷„ЎўЏџ№Ёёяабвгдежзийклмнопрстуфхцчшщъыьэю¤");
+var CP1257 = new SBCS("CP1257", "€ ‚ „…†‡ ‰ ‹ ¨ˇ¸ ‘’“”•–— ™ › ¯˛  ?   ?  Ø Ŗ    Æ        ø ŗ    æĄĮĀĆ  ĘĒČ ŹĖĢĶĪĻŠŃŅ Ō   ŲŁŚŪ ŻŽ ąįāć  ęēč źėģķīļšńņ ō   ųłśū żž˙");
+var CP1258 = new SBCS("CP1258", "€ ‚ƒ„…†‡ˆ‰ ‹Œ    ‘’“”•–—˜™ ›œ  Ÿ                                   Ă        ̀   Đ ̉  Ơ       Ữ    ă        ́   đ ̣  ơ       ư₫ ");
+var MAC_CYRILLIC = new SBCS("MAC-CYRILLIC", "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ†°Ґ §•¶І® ™Ђђ≠Ѓѓ∞ ≤≥і ґЈЄєЇїЉљЊњјЅ¬√ƒ≈∆«»… ЋћЌќѕ–—“”‘’÷„ЎўЏџ№Ёёяабвгдежзийклмнопрстуфхцчшщъыьэю€");
 var MAC_GREEK = new SBCS("MAC-GREEK", "Ä¹²É³ÖÜ΅àâä΄¨çéèêë£™îï•½‰ôö¦­ùûü†ΓΔΘΛΞΠß® ΣΪ§≠°·Α ≤≥¥ΒΕΖΗΙΚΜΦΫΨΩάΝ¬ΟΡ≈Τ«»… ΥΧΆΈœ–―“”‘’÷ΉΊΌΎέήίόΏύαβψδεφγηιξκλμνοπώρστθωςχυζϊϋΐΰ?");
 var MAC_ICELAND = new SBCS("MAC-ICELAND", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûüÝ°  §•¶ß® ™´¨≠ÆØ∞ ≤≥¥ ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄¤Ðð þý·‚„‰ÂÊÁËÈÍÎÏÌÓÔ?ÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ");
 var MAC_LATIN2 = new SBCS("MAC-LATIN2", "ÄĀāÉĄÖÜáąČäčĆćéŹźĎíďĒēĖóėôöõúĚěü†°Ę §•¶ß® ™ę¨≠ģĮįĪ≤≥īĶ∂∑łĻļĽľĹĺŅņŃ¬√ńŇ∆«»… ňŐÕőŌ–—“”‘’÷◊ōŔŕŘ‹›řŖŗŠ‚„šŚśÁŤťÍŽžŪÓÔūŮÚůŰűŲųÝýķŻŁżĢˇ");
-var MAC_ROMAN = new SBCS("MAC-ROMAN", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°  §•¶ß® ™´¨≠ÆØ∞ ≤≥¥ ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄¤‹›ﬁﬂ‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔ?ÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ");
+var MAC_ROMAN = new SBCS("MAC-ROMAN", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°  §•¶ß® ™´¨≠ÆØ∞ ≤≥¥ ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›ﬁﬂ‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ");
 var MAC_TURKISH = new SBCS("MAC-TURKISH", "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°  §•¶ß® ™´¨≠ÆØ∞ ≤≥¥ ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸĞğİıŞş‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔ?ÒÚÛÙ?ˆ˜¯˘˙˚¸˝˛ˇ");
 var ATARIST = new SBCS("ATARIST", "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥ßƒáíóúñÑªº¿⌐¬½¼¡«»ãõØøœŒÀÃÕ¨´†¶©®™ĳĲאבגדהוזחטיכלמנסעפצקרשתןךםףץ§∧∞αβΓπΣσµτΦΘΩδ∮φ∈∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²³¯");
 var CP856 = new SBCS("CP856", "אבגדהוזחטיךכלםמןנסעףפץצקרשת?£?×??????????®¬½¼?«»░▒▓│┤???©╣║╗╝¢¥┐└┴┬├─┼??╚╔╩╦╠═╬¤?????????┘┌█▄¦?▀??????µ???????¯´­±‗¾¶§÷¸°¨·¹³²■ ");
 var CP1006 = new SBCS("CP1006", "۰۱۲۳۴۵۶۷۸۹،؛ ؟ﺁﺍﺎﺎﺏﺑﭖﭘﺓﺕﺗﭦﭨﺙﺛﺝﺟﭺﭼﺡﺣﺥﺧﺩﮄﺫﺭﮌﺯﮊﺱﺳﺵﺷﺹﺻﺽﺿﻁﻅﻉﻊﻋﻌﻍﻎﻏﻐﻑﻓﻕﻗﻙﻛﮒﮔﻝﻟﻠﻡﻣﮞﻥﻧﺅﻭﮦﮨﮩﮪﺀﺉﺊﺋﻱﻲﻳﮰﮮﹼﹽ");
 var KOI8_R = new SBCS("KOI8-R", "─│┌┐└┘├┤┬┴┼▀▄█▌▐░▒▓⌠■∙√≈≤≥ ⌡°²·÷═║╒ё╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡Ё╢╣╤╥╦╧╨╩╪╫╬©юабцдефгхийклмнопярстужвьызшэщчъЮАБЦДЕФГХИЙКЛМНОПЯРСТУЖВЬЫЗШЭЩЧЪ");
-var KOI8_U = new SBCS("KOI8-U", "─│┌┐└┘├┤┬┴┼▀▄█▌▐░▒▓⌠■∙√≈≤≥ ⌡°²·÷═║╒ёє╔ії╗╘╙╚╛ґ╝╞╟╠╡ЁЄ╣ІЇ╦╧╨╩╪Ґ╬©юабцдефгхийклмнопярстужвьызшэщчъЮАБЦДЕФГХИЙКЛМНОПЯРСТУЖВЬЫЗШЭЩЧЪ");
+var KOI8_U = new SBCS("KOI8-U", "─│┌┐└┘├┤┬┴┼▀▄█▌▐░▒▓⌠■∙√≈≤≥ ⌡°²·÷═║╒ёє╔ії╗╘╙╚╛ґў╞╟╠╡ЁЄ╣ІЇ╦╧╨╩╪ҐЎ©юабцдефгхийклмнопярстужвьызшэщчъЮАБЦДЕФГХИЙКЛМНОПЯРСТУЖВЬЫЗШЭЩЧЪ");
 var KZ1048 = new SBCS("KZ1048", "ЂЃ‚ѓ„…†‡€‰Љ‹ЊҚҺЏђ‘’“”•–—?™љ›њқһџ ҰұӘ Ө  Ё Ғ    Ү  Ііө   ё№ғ әҢңүАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя");
 var NEXTSTEP = new SBCS("NEXTSTEP", " ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝÞµ×÷©   ⁄ ƒ ¤’“ ‹›ﬁﬂ®–†‡·¦ •‚„” …‰¬ ¹ˋ´ˆ˜¯˘˙¨²˚¸³˝˛ˇ—±¼½¾àáâãäåçèéêëìÆíªîïðñŁØŒºòóôõöæùúûıüýłøœßþÿ??");
 var JIS_0201 = new SBCS("JIS-0201", "‾?????????????????????????????????｡｢｣､･ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝﾞﾟ????????????????????????????????", "\\¥");
@@ -1383,8 +1381,8 @@ var UTF16LE2 = new Singleton(UTF_16LE);
 var UTF16BE = new Singleton(UTF_16BE);
 var UTF32LE = new Singleton(UTF_32LE);
 var UTF32BE = new Singleton(UTF_32BE);
-var encodings = { US_ASCII, ISO_8859_1, ISO_8859_2, ISO_8859_3, ISO_8859_4, ISO_8859_5, ISO_8859_6, ISO_8859_7, ISO_8859_8, ISO_8859_9, ISO_8859_10, ISO_8859_11, ISO_8859_13, ISO_8859_14, ISO_8859_15, ISO_8859_16, CP037, CP424, CP500, CP875, CP1026, CP437, CP737, CP775, CP850, CP852, CP855, CP857, CP860, CP861, CP862, CP863, CP864, CP865, CP866, CP869, CP874, CP1250, CP1251, CP1252, CP1253, CP1254, CP1255, CP1256, CP1257, CP1258, MAC_CYRILLIC, MAC_GREEK, MAC_ICELAND, MAC_LATIN2, MAC_ROMAN, MAC_TURKISH, ATARIST, CP856, CP1006, KOI8_R, KOI8_U, KZ1048, NEXTSTEP, JIS_0201, SHIFT_JIS, CP932, UTF8, UTF16LE: UTF16LE2, UTF16BE, UTF32LE, UTF32BE };
-var aliases = "US-ASCII 646 ansix34 ascii ascii7 cp367 csascii default ibm367 iso646irv iso646us isoir6 us,ISO-8859-1 819 88591 cp819 csisolatin1 ibm819 isoir100 l1 latin1,ISO-8859-2 88592 912 cp912 csisolatin2 ibm912 isoir101 l2 latin2,ISO-8859-3 88593 913 cp913 csisolatin3 ibm913 isoir109 l3 latin3,ISO-8859-4 88594 914 cp914 csisolatin4 ibm914 isoir110 l4 latin4,ISO-8859-5 88595 915 cp915 csisolatincyrillic cyrillic ibm915 isoir144,ISO-8859-6 1089 88596 arabic asmo708 cp1089 csisolatinarabic ecma114 ibm1089 isoir127,ISO-8859-7 813 88597 cp813 csisolatingreek ecma118 elot928 greek greek8 ibm813 isoir126 suneugreek,ISO-8859-8 88598 916 cp916 csisolatinhebrew hebrew ibm916 isoir138,ISO-8859-9 88599 920 cp920 csisolatin5 ibm920 isoir148 l5 latin5,ISO-8859-10 csisolatin6 isoir157 l6 latin6,ISO-8859-11 xiso885911,ISO-8859-13 885913,ISO-8859-14 isoceltic isoir199 l8 latin8,ISO-8859-15 885915 923 cp923 csiso885915 csisolatin csisolatin9 ibm923 iso885915fdis l9 latin latin9,ISO-8859-16 csiso885916 iso8859162001 isoir226 l10 latin10,CP037 37 cpibm37 csebcdiccpca csebcdiccpnl csebcdiccpus csebcdiccpwt csibm37 ebcdiccpca ebcdiccpnl ebcdiccpus ebcdiccpwt ibm37,CP424 424 csibm424 ebcdiccphe ibm424,CP500 500 csibm500 ebcdiccpbh ebcdiccpch ibm500,CP875 875 ibm875 xibm875,CP1026 1026 ibm1026,CP437 437 cspc8codepage437 ibm437 windows437,CP737 737 ibm737 xibm737,CP775 775 ibm775,CP850 850 cspc850multilingual ibm850,CP852 852 cspcp852 ibm852,CP855 855 cspcp855 ibm855,CP857 857 csibm857 ibm857,CP860 860 csibm860 ibm860,CP861 861 cpis csibm861 ibm861,CP862 862 csibm862 cspc862latinhebrew ibm862,CP863 863 csibm863 ibm863,CP864 864 csibm864 ibm864,CP865 865 csibm865 ibm865,CP866 866 csibm866 ibm866,CP869 869 cpgr csibm869 ibm869,CP874 874 ibm874 xibm874,CP1250 cp5346 win1250 windows1250,CP1251 ansi1251 cp5347 win1251 windows1251,CP1252 cp5348 ibm1252 win1252 windows1252,CP1253 cp5349 win1253 windows1253,CP1254 cp5350 win1254 windows1254,CP1255 win1255 windows1255,CP1256 win1256 windows1256,CP1257 cp5353 win1257 windows1257,CP1258 win1258 windows1258,MAC-CYRILLIC xmaccyrillic,MAC-GREEK xmacgreek,MAC-ICELAND xmaciceland,MAC-LATIN2 maccentraleurope xmaccentraleurope,MAC-ROMAN xmacroman,MAC-TURKISH xmacturkish,ATARIST,CP856 856 ibm856 xibm856,CP1006 1006 ibm1006 xibm1006,KOI8-R cskoi8r koi8,KOI8-U cskoi8u,KZ1048 cskz1048 rk1048 strk10482002,NEXTSTEP we8nextstep,JIS-0201 cshalfwidthkatakana x201,SHIFT-JIS csshiftjis jis201 mskanji sjis xsjis,CP932 932 ms932 win932 windows31j windows932,UTF8 unicode11utf8,UTF16LE utf16,UTF16BE,UTF32LE utf32,UTF32BE";
+var encodings = { ISO_8859_2, ISO_8859_3, ISO_8859_4, ISO_8859_5, ISO_8859_6, ISO_8859_7, ISO_8859_8, ISO_8859_8_I, ISO_8859_10, ISO_8859_13, ISO_8859_14, ISO_8859_15, ISO_8859_16, CP037, CP424, CP500, CP875, CP1026, CP437, CP737, CP775, CP850, CP852, CP855, CP857, CP860, CP861, CP862, CP863, CP864, CP865, CP866, CP869, CP874, CP1250, CP1251, CP1252, CP1253, CP1254, CP1255, CP1256, CP1257, CP1258, MAC_CYRILLIC, MAC_GREEK, MAC_ICELAND, MAC_LATIN2, MAC_ROMAN, MAC_TURKISH, ATARIST, CP856, CP1006, KOI8_R, KOI8_U, KZ1048, NEXTSTEP, JIS_0201, SHIFT_JIS, CP932, UTF8, UTF16LE: UTF16LE2, UTF16BE, UTF32LE, UTF32BE };
+var aliases = "ISO-8859-2 csisolatin2 iso885921987 isoir101 l2 latin2,ISO-8859-3 csisolatin3 iso885931988 isoir109 l3 latin3,ISO-8859-4 csisolatin4 iso885941988 isoir110 l4 latin4,ISO-8859-5 csisolatincyrillic cyrillic iso885951988 isoir144,ISO-8859-6 arabic asmo708 csiso88596e csiso88596i csisolatinarabic ecma114 iso885961987 iso88596e iso88596i isoir127,ISO-8859-7 csisolatingreek ecma118 elot928 greek greek8 iso885971987 isoir126 suneugreek,ISO-8859-8 csiso88598e csisolatinhebrew hebrew iso885981988 iso88598e isoir138 visual,ISO-8859-8-I csiso88598i logical,ISO-8859-10 csisolatin6 isoir157 l6 latin6,ISO-8859-13,ISO-8859-14,ISO-8859-15 csisolatin9 l9,ISO-8859-16,CP037 37 cpibm37 csebcdiccpca csebcdiccpnl csebcdiccpus csebcdiccpwt csibm37 ebcdiccpca ebcdiccpnl ebcdiccpus ebcdiccpwt ibm37,CP424 424 csibm424 ebcdiccphe ibm424,CP500 500 csibm500 ebcdiccpbh ebcdiccpch ibm500,CP875 875 ibm875 xibm875,CP1026 1026 ibm1026,CP437 437 cspc8codepage437 ibm437 windows437,CP737 737 ibm737 xibm737,CP775 775 ibm775,CP850 850 cspc850multilingual ibm850,CP852 852 cspcp852 ibm852,CP855 855 cspcp855 ibm855,CP857 857 csibm857 ibm857,CP860 860 csibm860 ibm860,CP861 861 cpis csibm861 ibm861,CP862 862 csibm862 cspc862latinhebrew ibm862,CP863 863 csibm863 ibm863,CP864 864 csibm864 ibm864,CP865 865 csibm865 ibm865,CP866 866 csibm866 ibm866,CP869 869 cpgr csibm869 ibm869,CP874 dos874 iso885911 tis620 windows874,CP1250 windows1250 xcp1250,CP1251 windows1251 xcp1251,CP1252 ansix341968 ascii cp819 csisolatin1 ibm819 iso88591 iso885911987 isoir100 l1 latin1 usascii windows1252 xcp1252,CP1253 windows1253 xcp1253,CP1254 csisolatin5 iso88599 iso885991989 isoir148 l5 latin5 windows1254 xcp1254,CP1255 windows1255 xcp1255,CP1256 windows1256 xcp1256,CP1257 windows1257 xcp1257,CP1258 windows1258 xcp1258,MAC-CYRILLIC xmaccyrillic xmacukrainian,MAC-GREEK xmacgreek,MAC-ICELAND xmaciceland,MAC-LATIN2 maccentraleurope xmaccentraleurope,MAC-ROMAN csmacintosh mac macintosh xmacroman,MAC-TURKISH xmacturkish,ATARIST,CP856 856 ibm856 xibm856,CP1006 1006 ibm1006 xibm1006,KOI8-R cskoi8r koi koi8,KOI8-U koi8ru,KZ1048 cskz1048 rk1048 strk10482002,NEXTSTEP we8nextstep,JIS-0201 cshalfwidthkatakana x201,SHIFT-JIS csshiftjis jis201 mskanji sjis xsjis,CP932 932 ms932 win932 windows31j windows932,UTF8 unicode11utf8 unicode20utf8 xunicode20utf8,UTF16LE utf16,UTF16BE,UTF32LE utf32,UTF32BE";
 export {
   ATARIST,
   CP037,
@@ -1420,9 +1418,7 @@ export {
   CP874,
   CP875,
   CP932,
-  ISO_8859_1,
   ISO_8859_10,
-  ISO_8859_11,
   ISO_8859_13,
   ISO_8859_14,
   ISO_8859_15,
@@ -1434,7 +1430,7 @@ export {
   ISO_8859_6,
   ISO_8859_7,
   ISO_8859_8,
-  ISO_8859_9,
+  ISO_8859_8_I,
   JIS_0201,
   KOI8_R,
   KOI8_U,
@@ -1447,7 +1443,6 @@ export {
   MAC_TURKISH,
   NEXTSTEP,
   SHIFT_JIS,
-  US_ASCII,
   UTF16BE,
   UTF16LE2 as UTF16LE,
   UTF32BE,

@@ -1,6 +1,10 @@
 import { isNativeDecoderSupported, nativeDecoderOp } from "./native.mjs";
 import { ByteLengthFn, ByteLengthMaxFn, CharsetContext, DecodeEndFn, DecoderOperations, DecodeState, EncoderOperations, EncodeState, FlushIntoFn } from "./types.mjs";
 
+/**
+ * @suppress {reportUnknownTypes}
+ */
+export const bufferExists = typeof Buffer !== "undefined";
 export const TEXT_ENCODER = new TextEncoder();
 
 /**

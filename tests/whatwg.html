@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mocha Tests</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mocha/mocha.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "chai": "https://cdn.jsdelivr.net/npm/chai@6.2.2/index.js",
+          "iconv-tiny": "../dist/whatwg.main.mjs"
+        }
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mocha/mocha.js"></script>
+  </head>
+  <body>
+    <div id="mocha"></div>
+    <script src="https://cdn.jsdelivr.net/npm/mocha/mocha.js"></script>
+    <script class="mocha-init">
+      mocha.setup("bdd");
+      mocha.checkLeaks();
+    </script>
+    <script class="mocha-exec" type="module">
+      await import("./whatwg.mjs");
+      mocha.run();
+    </script>
+  </body>
+</html>

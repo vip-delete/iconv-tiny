@@ -1,4 +1,4 @@
-import { byteLengthMax1X, decodeEndDummy, flushIntoDummy, getString, isMapped, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
+import { bufferExists, byteLengthMax1X, decodeEndDummy, flushIntoDummy, getString, isMapped, REPLACEMENT_CHARACTER_CODE } from "./commons.mjs";
 import { createCharsetMapped, createDecodeStateMappedFast, createDecodeStateMapped, createEncodeStateMapped, createEncodeStateMappedFast } from "./mapped.mjs";
 import {
   createDecoderOperations,
@@ -33,7 +33,7 @@ const decodeSBCS = (decodeState, buf) => {
   }
   // help V8 to inline
   // eslint-disable-next-line no-undef
-  return Buffer ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
+  return bufferExists ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
 };
 
 /**
@@ -63,7 +63,7 @@ const decodeSBCSFast = (decodeState, buf) => {
   }
   // help V8 to inline
   // eslint-disable-next-line no-undef
-  return Buffer ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
+  return bufferExists ? Buffer.from(u16.buffer, u16.byteOffset, u16.byteLength).toString("ucs2") : getString(u16);
 };
 
 /**

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.1] - 2026-01-18
+
+* Add Encodings from https://encoding.spec.whatwg.org/
+
 ## [1.4.0] - 2026-01-07
 
 * Make API similar to iconv-lite

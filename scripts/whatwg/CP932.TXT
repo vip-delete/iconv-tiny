@@ -1,11 +1,6 @@
 #
-# Unicode keeps 0x80 UNDEFINED
-# but Encoding Standard maps it to 0x80:
+# Encoding Standard maps it to 0x80:
 #    https://encoding.spec.whatwg.org/#shift_jis-decoder
 #    If byte is an ASCII byte or 0x80, then return a code point whose value is byte.
-#
-# iconv-lite also maps it to itself
-# ... so do the same
-#
 
-0x80 0x80
+0 0x80

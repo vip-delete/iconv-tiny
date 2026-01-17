@@ -1,5 +1,5 @@
 import iconvLite from "iconv-lite";
-import { createIconv, encodings } from "iconv-tiny";
+import { createIconv, encodings } from "iconv-tiny/legacy";
 import { assert, expect, test } from "vitest";
 import { DEFAULT_CHAR_BYTE } from "../src/commons.mjs";
 import { ALL_SYMBOLS } from "./common.mjs";

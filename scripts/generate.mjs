@@ -2,7 +2,16 @@ import { buildSync } from "esbuild";
 import { getString, REPLACEMENT_CHARACTER_CODE } from "../src/commons.mjs";
 import { canonicalize } from "../src/iconv.mjs";
 import { existsSync, getBanner, getExports, getIdentifier, mkdirSync, readFileSync, writeFileSync } from "./commons.mjs";
-import config from "./config.json" with { type: "json" };
+import unicodeConfig from "./unicode.config.json" with { type: "json" };
+import whatwgConfig from "./whatwg.config.json" with { type: "json" };
+
+/**
+ * @enum {string}
+ */
+const EncodingsStandard = {
+  UNICODE: "unicode", // https://www.unicode.org/Public/MAPPINGS/
+  WHATWG: "whatwg", // https://encoding.spec.whatwg.org
+};
 
 /**
  * @typedef {{
@@ -15,10 +24,14 @@ import config from "./config.json" with { type: "json" };
 
 /**
  * @typedef {{
- *   path: string,
+ *   url: string,
  *   type: string,
  *   encoding: !Encoding,
  * }} EncodingConfig
+ */
+
+/**
+ * @typedef {(content: string) => !Map<number, number>} ParseMappingsFn
  */
 
 /**
@@ -71,10 +84,9 @@ const escape = (str) => {
 const hex = (num) => `0x${num.toString(16).toUpperCase().padStart(4, "0")}`;
 
 /**
- * @param {string} content
- * @returns {!Map<number, number>}
+ * @type {!ParseMappingsFn}
  */
-const parseMappings = (content) => {
+const parseUnicodeMappings = (content) => {
   /**
    * @type {!Map<number, number>}
    */
@@ -106,11 +118,62 @@ const parseMappings = (content) => {
 };
 
 /**
+ * @type {!ParseMappingsFn}
+ */
+const parseWHATWGMappings = (content) => {
+  /**
+   * @type {!Map<number, number>}
+   */
+  const mappings = new Map();
+
+  for (let i = 0; i < 128; i++) {
+    mappings.set(i, i);
+  }
+
+  const lines = content.split("\n");
+  lines.forEach((line) => {
+    const i = line.indexOf("#");
+    if (i === 0) {
+      // ignore comments
+      return;
+    }
+    const beforeHash = i === -1 ? line : line.substring(0, i).trim();
+    const parts = beforeHash.split(/\s+/u).filter(Boolean).map(Number).filter(Number.isFinite);
+    if (!parts.length) {
+      // ignore empty lines
+      return;
+    }
+    let key = Number(parts[0]);
+    assert(Number.isInteger(key), `Key "${key}" is not an integer: ${line}`);
+    key += 128;
+    assert(key >= 0 && key <= 0xffff, `Key "${key}" is not in range [0...${hex(0xffff)}]: ${line}`);
+    assert(!mappings.has(key), `Duplicate key "${hex(key)}": ${line}`);
+    const value = parts[1] ?? null;
+    if (value !== null) {
+      assert(value >= 0 && value <= 0xffff, `Value "${value}" is not in range [0...0xFFFF]: ${line}`);
+    }
+    mappings.set(key, value);
+  });
+  return mappings;
+};
+
+/**
+ * @type {!ParseMappingsFn}
+ */
+const parseMappings = (content) => {
+  if (content.substring(0, 200).includes("encoding.spec.whatwg.org")) {
+    return parseWHATWGMappings(content);
+  }
+  return parseUnicodeMappings(content);
+};
+
+/**
+ * @param {!EncodingsStandard} standard
  * @param {!Encoding} encoding
  * @param {!Map<number, number>} mappings
  */
-const applyOverrides = (encoding, mappings) => {
-  const filename = `scripts/mappings/${encoding.name}.TXT`;
+const applyOverrides = (standard, encoding, mappings) => {
+  const filename = `scripts/${standard}/${encoding.name}.TXT`;
   if (existsSync(filename)) {
     const content = readFileSync(filename);
     const overrides = parseMappings(content);
@@ -125,26 +188,29 @@ const applyOverrides = (encoding, mappings) => {
 };
 
 /**
+ * @param {!EncodingsStandard} standard
  * @param {!Encoding} encoding
  * @returns {!Map<number,number>}
  */
-export const loadMappings = (encoding) => {
-  const filename = `temp/${encoding.name}.TXT`;
+export const loadMappings = (standard, encoding) => {
+  const filename = `temp/${standard}/${encoding.name}.TXT`;
   const content = readFileSync(filename);
   const mappings = parseMappings(content);
-  applyOverrides(encoding, mappings);
+  applyOverrides(standard, encoding, mappings);
   return mappings;
 };
 
 /**
+ * @param {!EncodingsStandard} standard
  * @param {!EncodingConfig} cfg
  * @param {!Array<() => Promise<void>>} tasks
  */
-const fetchEncoding = (cfg, tasks) => {
-  const filename = `temp/${cfg.encoding.name}.TXT`;
+const fetchEncoding = (standard, cfg, tasks) => {
+  const url = cfg.url;
+  const filename = `temp/${standard}/${cfg.encoding.name}.TXT`;
   // fetch the file if it doesn't exist
   if (!existsSync(filename)) {
-    const url = `${config.baseUrl}/${cfg.path}`;
+    mkdirSync(`temp/${standard}`);
     tasks.push(async () => {
       const response = await fetch(url);
       if (!response.ok) {
@@ -158,16 +224,17 @@ const fetchEncoding = (cfg, tasks) => {
 };
 
 /**
+ * @param {!EncodingsStandard} standard
  * @param {!Array<!EncodingConfig>} encodingConfigs
  * @returns {!Promise<void>}
  */
-const fetchEncodings = async (encodingConfigs) => {
+const fetchEncodings = async (standard, encodingConfigs) => {
   /**
    * @type {!Array<() => Promise<void>>}
    */
   const tasks = [];
   for (const cfg of encodingConfigs) {
-    fetchEncoding(cfg, tasks);
+    fetchEncoding(standard, cfg, tasks);
   }
   await Promise.all(tasks.map((task) => task()));
 };
@@ -370,7 +437,7 @@ const processUnicode = (mjs, encodings) => {
   mjs.push(`UTF16BE=new Singleton(UTF_16BE)`);
   mjs.push(`UTF32LE=new Singleton(UTF_32LE)`);
   mjs.push(`UTF32BE=new Singleton(UTF_32BE)`);
-  encodings.push({ name: "UTF8", aliases: "unicode-1-1-utf-8" });
+  encodings.push({ name: "UTF8", aliases: "unicode-1-1-utf-8 unicode11utf8 unicode20utf8 utf-8 utf8 x-unicode20utf8" });
   encodings.push({ name: "UTF16LE", aliases: "UTF16" });
   encodings.push({ name: "UTF16BE", aliases: "" });
   encodings.push({ name: "UTF32LE", aliases: "UTF32" });
@@ -378,9 +445,10 @@ const processUnicode = (mjs, encodings) => {
 };
 
 /**
+ * @param {!EncodingsStandard} standard
  * @param {!Array<string>} ids
  */
-const generateMTS = (ids) => {
+const generateMTS = (standard, ids) => {
   /**
    * @type {!Array<string>}
    */
@@ -402,7 +470,7 @@ const generateMTS = (ids) => {
   mts.push(`export const aliases: string;`);
 
   const mtsContent = mts.join("\n") + "\n";
-  writeFileSync("dist/iconv-tiny.d.mts", mtsContent);
+  writeFileSync(`dist/${standard}.iconv-tiny.d.mts`, mtsContent);
 };
 
 /**
@@ -433,9 +501,10 @@ const generateAliases = (encodings) => {
 };
 
 /**
+ * @param {!EncodingsStandard} standard
  * @param {!Array<string>} mjs
  */
-const writeBundle = (mjs) => {
+const writeBundle = (standard, mjs) => {
   // generate esm bundle
   const mjsContent = "export const\n" + mjs.join(",\n") + ";\n";
 
@@ -443,7 +512,7 @@ const writeBundle = (mjs) => {
 
   if (existsSync("dist/cc.mjs")) {
     // bundle with the Closure Compiled code
-    writeFileSync("dist/iconv-tiny.min.mjs", banner + readFileSync("dist/cc.mjs") + mjsContent);
+    writeFileSync(`dist/${standard}.iconv-tiny.min.mjs`, banner + readFileSync("dist/cc.mjs") + mjsContent);
   }
 
   /**
@@ -457,16 +526,16 @@ const writeBundle = (mjs) => {
 
   // re-export functions only
   const sc = `import { ${exports.join(", ")} } from "../src/index.mjs";\nexport { ${exports.filter(functionFilter).join(", ")} };\n`;
-  writeFileSync("dist/main.mjs", sc + mjsContent);
+  writeFileSync(`dist/${standard}.main.mjs`, sc + mjsContent);
 
   // esbuild
   buildSync({
-    entryPoints: ["./dist/main.mjs"],
+    entryPoints: [`./dist/${standard}.main.mjs`],
     banner: { js: banner },
     format: "esm",
     bundle: true,
     charset: "utf8",
-    outfile: "./dist/iconv-tiny.mjs",
+    outfile: `./dist/${standard}.iconv-tiny.mjs`,
   });
 };
 
@@ -478,7 +547,12 @@ const ENCODING_TYPES = {
   DBCS: dbcsEncodingArgumentFactory,
 };
 
-const generateBundle = async () => {
+/**
+ *
+ * @param {!EncodingsStandard} standard
+ * @param {!Array<!EncodingConfig>} encodingConfigs
+ */
+const generateBundle = async (standard, encodingConfigs) => {
   /**
    * @type {!Array<string>}
    */
@@ -494,14 +568,18 @@ const generateBundle = async () => {
    */
   const dataMap = new Map();
 
-  const ascii = { name: "US-ASCII", ascii: true, aliases: "iso-ir-6 ANSI_X3.4 ISO_646.irv ASCII ISO646-US us IBM367 cp367 csASCII default 646 ANSI_X3.4 ascii7" };
+  if (standard === EncodingsStandard.UNICODE) {
+    // unicode: there is no ascii table
+    // whatwg: ascii is an alias of windows-1252
+    const ascii = { name: "US-ASCII", ascii: true, aliases: "iso-ir-6 ANSI_X3.4 ISO_646.irv ASCII ISO646-US us IBM367 cp367 csASCII default 646 ANSI_X3.4 ascii7" };
+    mjs.push(`${getIdentifier(ascii.name)}=new SBCS("${ascii.name}","?".repeat(128))`);
+    encodings.push(ascii);
+  }
 
-  mjs.push(`${getIdentifier(ascii.name)}=new SBCS("${ascii.name}","?".repeat(128))`);
-  encodings.push(ascii);
+  await fetchEncodings(standard, encodingConfigs);
 
-  await fetchEncodings(config.encodings);
-  config.encodings.forEach((cfg) => {
-    const mappings = loadMappings(cfg.encoding);
+  encodingConfigs.forEach((cfg) => {
+    const mappings = loadMappings(standard, cfg.encoding);
     const factory = ENCODING_TYPES[cfg.type];
     processB2C(cfg.encoding, factory, mappings, mjs, dataMap);
     encodings.push(cfg.encoding);
@@ -518,15 +596,15 @@ const generateBundle = async () => {
     ids.push(id);
   }
 
-  generateMTS(ids);
+  generateMTS(standard, ids);
 
   mjs.push(`encodings={${ids.join(",")}}`);
   mjs.push(`aliases="${generateAliases(encodings)}"`);
 
-  writeBundle(mjs);
+  writeBundle(standard, mjs);
 };
 
 // main
 mkdirSync("dist");
-mkdirSync("temp");
-await generateBundle();
+await generateBundle(EncodingsStandard.UNICODE, unicodeConfig.encodings);
+await generateBundle(EncodingsStandard.WHATWG, whatwgConfig.encodings);
