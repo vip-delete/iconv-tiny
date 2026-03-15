@@ -12,13 +12,20 @@
 [![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 [![npm version](https://img.shields.io/npm/v/iconv-tiny)](https://www.npmjs.com/package/iconv-tiny)
 
-Pure JS character encoding conversion as an ECMAScript Module (ESM). Auto-Generated from https://encoding.spec.whatwg.org and https://www.unicode.org/Public/MAPPINGS.
+Pure JS character encoding conversion as an ECMAScript Module (ESM).
+
+There are two versions of implementation:
+
+1. [**unicode.iconv-tiny.mjs**](dist/unicode.iconv-tiny.mjs) is auto-generated from https://www.unicode.org/Public/MAPPINGS (`import * from "iconv-tiny"`)
+1. [**whatwg.iconv-tiny.mjs**](dist/whatwg.iconv-tiny.mjs) is auto-generated from https://encoding.spec.whatwg.org (`import * from "iconv-tiny/whatwg"`)
 
 ## About
 
-[**iconv-tiny.mjs**](dist/iconv-tiny.mjs) is written from scratch and designed to address all issues and implement all features in the [**iconv-lite**](https://github.com/ashtuchkin/iconv-lite) backlog.
+**iconv-tiny** is written from scratch and designed to address all issues and implement all features in the [**iconv-lite**](https://github.com/ashtuchkin/iconv-lite) backlog.
 <br/>
 It is an ES-module and should work in all modern browsers and NodeJS that supports ESM, `TextDecoder`, and `TextEncoder`.
+
+there are two files:
 
 ## Features
 
@@ -43,7 +50,7 @@ or use CDN:
 <script type="importmap">
   {
     "imports": {
-      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.4.1/dist/iconv-tiny.mjs"
+      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.4.1/dist/unicode.iconv-tiny.mjs"
     }
   }
 </script>
@@ -51,7 +58,7 @@ or use CDN:
 
 ## Basic API
 
-API is very close to **iconv-lite** API, see [iconv-tiny.d.mts](dist/iconv-tiny.d.mts).
+API is very close to **iconv-lite** API, see [unicode.iconv-tiny.d.mts](dist/unicode.iconv-tiny.d.mts).
 
 ```javascript
 import { canonicalize, createIconv, encodings, aliases } from "iconv-tiny";
