@@ -6,7 +6,7 @@
       "request": "launch",
       "name": "Vitest",
       "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
-      "args": ["run", "--no-file-parallelism", "--testTimeout=0", "main.test.mjs"],
+      "args": ["run", "--no-file-parallelism", "--testTimeout=0", "unicode.main.test.mjs"],
       "autoAttachChildProcesses": true,
       "console": "integratedTerminal"
     },
