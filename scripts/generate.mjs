@@ -181,7 +181,9 @@ const applyOverrides = (standard, encoding, mappings) => {
       const oldValue = mappings.get(key) ?? null;
       const oldValueStr = oldValue === null ? "<UNDEFINED>" : hex(oldValue);
       const newValueStr = value === null ? "<UNDEFINED>" : hex(value);
-      console.log(`OVERRIDE ${encoding.name.padEnd(8, " ")} Key = ${hex(key)}: ${oldValueStr} -> ${newValueStr}`);
+      if (oldValueStr !== newValueStr) {
+        console.log(`OVERRIDE ${encoding.name.padEnd(8, " ")} Key = ${hex(key)}: ${oldValueStr} -> ${newValueStr}`);
+      }
       mappings.set(key, value);
     }
   }

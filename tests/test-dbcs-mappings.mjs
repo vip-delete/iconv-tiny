@@ -12,7 +12,7 @@ for (const [key, value] of Object.entries(encodings)) {
   if (dbcs.includes(key)) {
     const encoding = value.create();
     const name = encoding.getName();
-    const b2c = loadMappings({ name });
+    const b2c = loadMappings("unicode", { name });
 
     if (ascii.includes(key)) {
       // some mapping tables skipped ascii mappings

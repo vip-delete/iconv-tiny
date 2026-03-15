@@ -24,6 +24,7 @@ export default [
       "@stylistic/indent": ["error", 2],
       "capitalized-comments": 0,
       "id-length": ["error", { exceptions: ["e", "i", "j", "k", "r", "w"] }],
+      "jsdoc/reject-any-type": 0,
       "jsdoc/require-param-description": 0,
       "jsdoc/require-returns-description": 0,
       "max-classes-per-file": 0,

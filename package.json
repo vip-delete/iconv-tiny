@@ -28,8 +28,8 @@
     "README.md"
   ],
   "exports": {
-    ".": "./dist/whatwg.iconv-tiny.mjs",
-    "./legacy": "./dist/unicode.iconv-tiny.mjs"
+    ".": "./dist/unicode.iconv-tiny.mjs",
+    "./whatwg": "./dist/whatwg.iconv-tiny.mjs"
   },
   "repository": {
     "type": "git",
@@ -39,12 +39,13 @@
     "lint": "eslint",
     "generate": "node scripts/generate.mjs",
     "compile": "node scripts/compile.mjs",
-    "coverage": "vitest run --coverage unicode.main.test.mjs",
     "test": "vitest run",
+    "coverage": "vitest run --coverage unicode.main.test.mjs",
     "build": "npm run lint && npm run generate && npm run test && npm run coverage",
     "dev": "node scripts/server.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "^10.x",
     "@stylistic/eslint-plugin": "^5.x",
     "@types/express": "^5.x",
     "@types/google-closure-compiler": "^20231112.0.0",
@@ -52,12 +53,13 @@
     "@types/node": "^25.x",
     "@types/serve-static": "^2.x",
     "@vitest/coverage-istanbul": "^4.x",
-    "@vue/runtime-dom": "^3.5.26",
+    "@vue/runtime-dom": "^3.5.30",
     "esbuild": "^0.27.x",
-    "eslint": "^9.x",
+    "eslint": "^10.x",
     "eslint-plugin-jsdoc": "^62.x",
     "express": "^5.x",
-    "google-closure-compiler": "^20260114.0.0",
+    "globals": "^17.x",
+    "google-closure-compiler": "^20260311.0.0",
     "iconv-lite": "^0.7.2",
     "prettier": "^3.x",
     "serve-static": "^2.x",
