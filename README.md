@@ -121,7 +121,7 @@ See more [examples](examples).
 1. **UNICODE**: UTF-8, UTF-16, UTF-32
 1. **Japanese**: [JIS-0201](https://en.wikipedia.org/wiki/JIS_X_0201), [SHIFT-JIS](https://en.wikipedia.org/wiki/Shift_JIS), [CP932](https://en.wikipedia.org/wiki/Code_page_932_(Microsoft_Windows))
 
-All encodings are generated automatically from https://www.unicode.org/Public/MAPPINGS with a few additional mappings for **CP875** (0xE1 -> 0x20AF, 0xEC -> 0x037A, 0xFC -> 0x20AC) and **CP1255** (0xCA -> 0x05BA), see [mappings](scripts/mappings/)
+Unicode-based encodings (not WhatWG) are generated automatically from https://www.unicode.org/Public/MAPPINGS with a few additional mappings for **CP875** (0xE1 -> 0x20AF, 0xEC -> 0x037A, 0xFC -> 0x20AC) and **CP1255** (0xCA -> 0x05BA), see [scripts/unicode](scripts/unicode)
 
 **iconv-tiny** output is identical to **iconv-lite** output, see [tests/regression.test.mjs](tests/regression.test.mjs).
 
