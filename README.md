@@ -51,7 +51,7 @@ or use CDN:
 <script type="importmap">
   {
     "imports": {
-      "iconv-tiny": "https://unpkg.com/iconv-tiny@1.4.1/dist/unicode.iconv-tiny.mjs"
+      "iconv-tiny": "https://cdn.jsdelivr.net/npm/iconv-tiny@1.4.1/dist/unicode.iconv-tiny.mjs"
     }
   }
 </script>
