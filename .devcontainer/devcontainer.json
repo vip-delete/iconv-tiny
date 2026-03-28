@@ -10,7 +10,7 @@
       "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
     }
   },
-  "mounts": ["source=node_modules,target=/app/node_modules,type=volume"],
+  "mounts": ["source=node_modules_iconvtiny,target=/app/node_modules,type=volume"],
   "postCreateCommand": "npm install -g npm-check-updates && npm install",
   "portsAttributes": {
     "3000": {
