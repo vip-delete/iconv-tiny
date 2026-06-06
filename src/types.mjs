@@ -15,12 +15,12 @@ export const DecodeState = {};
 export const EncodeState = {};
 
 /**
- * @typedef {function(!CharsetContext,!ns.DecodeOptions):!DecodeState}
+ * @typedef {function(!CharsetContext,!iconvtiny.DecodeOptions):!DecodeState}
  */
 export const CreateDecodeStateFn = {};
 
 /**
- * @typedef {function(!CharsetContext,!ns.EncodeOptions):!EncodeState}
+ * @typedef {function(!CharsetContext,!iconvtiny.EncodeOptions):!EncodeState}
  */
 export const CreateEncodeStateFn = {};
 
@@ -135,7 +135,7 @@ export const DecodeStateNative = {};
  *            b2c: !Uint16Array,
  *            leftover: number,
  *            defaultChar: number,
- *            handler: ?ns.DefaultFunction,
+ *            handler: ?iconvtiny.DefaultFunction,
  *          }}
  */
 export const DecodeStateMapped = {};
@@ -155,7 +155,7 @@ export const DecodeStateMappedFast = {};
  *            w: number,
  *            c2b: !Uint16Array,
  *            defaultChar: number,
- *            handler: ?ns.DefaultFunction,
+ *            handler: ?iconvtiny.DefaultFunction,
  *          }}
  */
 export const EncodeStateMapped = {};
@@ -195,7 +195,7 @@ export const MappedCharsetContext = {};
  */
 export class MappedEncodingFactory {
   /**
-   * @param {!ns.Options} [options]
+   * @param {!iconvtiny.Options} [options]
    * @return {!Uint16Array}
    */
   createTable(options) {}

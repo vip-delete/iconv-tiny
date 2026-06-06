@@ -1,30 +1,26 @@
 import { compiler as Compiler } from "google-closure-compiler";
-import { abs, getExports, writeFileSync } from "./commons.mjs";
+import { abs, getExports, readFileSync, writeFileSync } from "./commons.mjs";
 
 /**
  * @param {string} name
- * @param {string} outputWrapper
  * @param {string} outputFile
  * @param {!Array<string>} files
  */
-const compile = async (name, outputWrapper, outputFile, files) => {
+const compile = async (name, outputFile, files) => {
   const args = {
-    /* eslint-disable camelcase */
-    module_resolution: "BROWSER",
-    compilation_level: "ADVANCED",
-    warning_level: "VERBOSE",
-    jscomp_error: "*",
-    jscomp_warning: "reportUnknownTypes",
-    assume_function_wrapper: true,
-    output_wrapper: outputWrapper,
-    summary_detail_level: String(3),
-    language_in: "ES_NEXT",
-    use_types_for_optimization: true,
+    moduleResolution: "BROWSER",
+    compilationLevel: "ADVANCED",
+    warningLevel: "VERBOSE",
+    jscompError: "*",
+    jscompWarning: "reportUnknownTypes",
+    assumeFunctionWrapper: true,
+    summaryDetailLevel: String(3),
+    languageIn: "ES_NEXT",
+    useTypesForOptimization: true,
     define: [],
-    js_output_file: abs(outputFile),
+    jsOutputFile: abs(outputFile),
     charset: "utf-8",
     js: files.map(abs),
-    /* eslint-enable camelcase */
   };
 
   await new Promise((resolve, reject) => {
@@ -52,19 +48,10 @@ const compile = async (name, outputWrapper, outputFile, files) => {
   console.log(`\x1b[33m${name.toUpperCase()}\x1b[0m: \x1b[92mBUILD SUCCESSFUL\x1b[0m: ${outputFile}\n`);
 };
 
-/**
- * @param {string} it
- * @returns {boolean}
- */
-const functionFilter = (it) => it.charAt(0) !== it.charAt(0).toUpperCase();
-
 const exports = getExports("src/index.mjs");
-writeFileSync("./dist/exports.mjs", `import { ${exports.join(", ")} } from "../src/index.mjs";\n${exports.map((it) => `ns.${it} = ${it};\n`).join("")}`);
+writeFileSync("./dist/exports.mjs", `import { ${exports.join(", ")} } from "../src/index.mjs";\n${exports.map((it) => `iconvtiny.${it} = ${it};\n`).join("")}`);
 
-// re-export functions only
-const outputWrapper = `const ns = {};\n{\n%output%\n}\nexport const { ${exports.filter(functionFilter).join(", ")} } = ns;\nconst { ${exports.filter((it) => !functionFilter(it)).join(", ")} } = ns;\n`;
-
-await compile("app", outputWrapper, "dist/cc.mjs", [
+await compile("app", "dist/cc.mjs", [
   "src/externs.mjs",
   "src/iconv.mjs",
   "src/types.mjs",
@@ -80,3 +67,20 @@ await compile("app", outputWrapper, "dist/cc.mjs", [
   "src/index.mjs",
   "dist/exports.mjs",
 ]);
+
+/**
+ * @param {string} match
+ * @param {string} name
+ * @returns {string}
+ */
+const replacer = (match, name) => ("\n" + (name[0] === name[0].toUpperCase() ? "" : "export ") + "const " + name);
+
+const filename = `dist/cc.mjs`;
+const ident = "(?<name>[A-Za-z_$][A-Za-z0-9_$]*)";
+const regexp = "iconvtiny\\." + ident;
+
+const min = readFileSync(filename) //
+  .replace(new RegExp("\\n" + regexp, "gu"), replacer)
+  .replace(new RegExp(regexp, "gu"), replacer);
+
+writeFileSync(filename, min);

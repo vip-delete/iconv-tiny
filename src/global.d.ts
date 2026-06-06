@@ -1,7 +1,7 @@
 /**
  * @see {@link file://./externs.mjs}
  */
-declare namespace ns {
+declare namespace iconvtiny {
   /**
    * Converts an encoding name to a normalized, unique name.
    * Removes non-alphanumeric characters and leading zeros.

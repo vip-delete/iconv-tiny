@@ -17,7 +17,7 @@ import {
 export const NO_LEFTOVER = -1;
 
 /**
- * @param {string|!ns.DefaultFunction|undefined} defaultChar
+ * @param {string|!iconvtiny.DefaultFunction|undefined} defaultChar
  * @param {number} defaultNumber
  * @return {number}
  */
@@ -39,7 +39,7 @@ export const createDecodeStateMapped = (charsetCtx, options) => {
   const defaultChar = getDefaultChar(defaultCharUnicode, REPLACEMENT_CHARACTER_CODE);
 
   /**
-   * @type {?ns.DefaultFunction}
+   * @type {?iconvtiny.DefaultFunction}
    */
   const handler = typeof defaultCharUnicode === "function" ? defaultCharUnicode : null;
 
@@ -119,7 +119,7 @@ export const createEncodeStateMapped = (charsetCtx, options) => {
   const defaultChar = getDefaultChar(defaultCharByte, DEFAULT_CHAR_BYTE);
 
   /**
-   * @type {?ns.DefaultFunction}
+   * @type {?iconvtiny.DefaultFunction}
    */
   const handler = typeof defaultCharByte === "function" ? defaultCharByte : null;
 
@@ -194,7 +194,7 @@ const createC2B = (b2c) => {
  * @param {!DecoderOperations} decoderOpFast
  * @param {!EncoderOperations} encoderOp
  * @param {!EncoderOperations} encoderOpFast
- * @return {!ns.Encoding}
+ * @return {!iconvtiny.Encoding}
  */
 export const createCharsetMapped = (
   //

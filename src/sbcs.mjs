@@ -24,7 +24,7 @@ const decodeSBCS = (decodeState, buf) => {
   const state = /** @type {!DecodeStateMapped} */ (decodeState);
   const b2c = state.b2c;
   const defaultChar = state.defaultChar;
-  const handler = /** @type {!ns.DefaultFunction} */ (state.handler);
+  const handler = /** @type {!iconvtiny.DefaultFunction} */ (state.handler);
   const u16 = new Uint16Array(buf.length);
   for (let i = 0; i < buf.length; i++) {
     const bt = buf[i];
@@ -85,7 +85,7 @@ const encodeIntoSBCS = (encodeState, str, buf) => {
   const state = /** @type {!EncodeStateMapped} */ (encodeState);
   const c2b = state.c2b;
   const defaultChar = state.defaultChar;
-  const handler = /** @type {!ns.DefaultFunction} */ (state.handler);
+  const handler = /** @type {!iconvtiny.DefaultFunction} */ (state.handler);
   const len = Math.min(str.length, buf.length);
   for (let i = 0; i < len; i++) {
     const ch = str.charCodeAt(i);
@@ -151,7 +151,7 @@ const CtxSBCS = {};
 /**
  * @override
  * @param {!CtxSBCS} ctx
- * @param {!ns.Options} [options]
+ * @param {!iconvtiny.Options} [options]
  * @return {!Uint16Array}
  */
 const createTableSBCS = (ctx, options) => {
@@ -208,7 +208,7 @@ const createTableSBCS = (ctx, options) => {
 // FACTORY
 
 /**
- * @implements {ns.EncodingFactory}
+ * @implements {iconvtiny.EncodingFactory}
  * @implements {MappedEncodingFactory}
  */
 export class SBCS {
@@ -233,8 +233,8 @@ export class SBCS {
 
   /**
    * @override
-   * @param {!ns.Options} [options]
-   * @return {!ns.Encoding}
+   * @param {!iconvtiny.Options} [options]
+   * @return {!iconvtiny.Encoding}
    */
   // @ts-expect-error
   create(options) {
@@ -251,7 +251,7 @@ export class SBCS {
 
   /**
    * @override
-   * @param {!ns.Options} [options]
+   * @param {!iconvtiny.Options} [options]
    * @return {!Uint16Array}
    */
   // @ts-expect-error

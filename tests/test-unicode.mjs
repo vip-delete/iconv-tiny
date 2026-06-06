@@ -66,7 +66,7 @@ const tests = [
 ];
 
 /**
- * @param {!ns.Encoding} encoding
+ * @param {!iconvtiny.Encoding} encoding
  * @param {!Uint8Array} array
  * @returns {string}
  */

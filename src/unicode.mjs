@@ -14,7 +14,7 @@ export const CharsetContextUnicode = {};
  * @param {boolean} littleEndian
  * @param {!DecoderOperations} decoderOp
  * @param {!EncoderOperations} encoderOp
- * @return {!ns.Encoding}
+ * @return {!iconvtiny.Encoding}
  */
 export const createUnicodeEncoding = (name, littleEndian, decoderOp, encoderOp) => {
   const charsetName = "UTF-" + name + (littleEndian ? "LE" : "BE");

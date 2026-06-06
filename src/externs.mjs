@@ -2,7 +2,7 @@
  * @file Encoding API for Closure Compiler.
  * @externs
  */
-const ns = {
+const iconvtiny = {
   /**
    * @param {string} encoding
    * @return {string}
@@ -10,9 +10,9 @@ const ns = {
   canonicalize(encoding) {},
 
   /**
-   * @param {!Object<string, !ns.EncodingFactory>} [encodings]
+   * @param {!Object<string, !iconvtiny.EncodingFactory>} [encodings]
    * @param {string} [aliases]
-   * @return {!ns.Iconv}
+   * @return {!iconvtiny.Iconv}
    */
   createIconv(encodings, aliases) {},
 
@@ -23,7 +23,7 @@ const ns = {
     /**
      * @param {!Uint8Array} buf
      * @param {string} encoding
-     * @param {!ns.OptionsAndDecoderOptions} [options]
+     * @param {!iconvtiny.OptionsAndDecoderOptions} [options]
      * @return {string}
      */
     decode(buf, encoding, options) {}
@@ -31,15 +31,15 @@ const ns = {
     /**
      * @param {string} str
      * @param {string} encoding
-     * @param {!ns.OptionsAndEncoderOptions} [options]
+     * @param {!iconvtiny.OptionsAndEncoderOptions} [options]
      * @return {!Uint8Array}
      */
     encode(str, encoding, options) {}
 
     /**
      * @param {string} name
-     * @param {!ns.Options} [options]
-     * @return {!ns.Encoding}
+     * @param {!iconvtiny.Options} [options]
+     * @return {!iconvtiny.Encoding}
      */
     getEncoding(name, options) {}
   },
@@ -49,8 +49,8 @@ const ns = {
    */
   EncodingFactory: class {
     /**
-     * @param {!ns.Options} [options]
-     * @return {!ns.Encoding}
+     * @param {!iconvtiny.Options} [options]
+     * @return {!iconvtiny.Encoding}
      */
     create(options) {}
   },
@@ -66,14 +66,14 @@ const ns = {
 
     /**
      * @param {!Uint8Array} buf
-     * @param {!ns.DecodeOptions} [options]
+     * @param {!iconvtiny.DecodeOptions} [options]
      * @return {string}
      */
     decode(buf, options) {}
 
     /**
      * @param {string} str
-     * @param {!ns.EncodeOptions} [options]
+     * @param {!iconvtiny.EncodeOptions} [options]
      * @return {!Uint8Array}
      */
     encode(str, options) {}
@@ -87,14 +87,14 @@ const ns = {
     // --- Low-level Stream APIs ---
 
     /**
-     * @param {!ns.DecodeOptions} [options]
-     * @return {!ns.DecoderStream}
+     * @param {!iconvtiny.DecodeOptions} [options]
+     * @return {!iconvtiny.DecoderStream}
      */
     getDecoder(options) {}
 
     /**
-     * @param {!ns.EncodeOptions} [options]
-     * @return {!ns.EncoderStream}
+     * @param {!iconvtiny.EncodeOptions} [options]
+     * @return {!iconvtiny.EncoderStream}
      */
     getEncoder(options) {}
   },
@@ -135,13 +135,13 @@ const ns = {
     /**
      * @param {string} str
      * @param {!Uint8Array} buf
-     * @return {!ns.TextEncoderEncodeIntoResult}
+     * @return {!iconvtiny.TextEncoderEncodeIntoResult}
      */
     encodeInto(str, buf) {}
 
     /**
      * @param {!Uint8Array} buf
-     * @return {!ns.TextEncoderEncodeIntoResult}
+     * @return {!iconvtiny.TextEncoderEncodeIntoResult}
      */
     flushInto(buf) {}
   },
@@ -153,70 +153,70 @@ const ns = {
  *            written: number,
  *          }}
  */
-ns.TextEncoderEncodeIntoResult;
+iconvtiny.TextEncoderEncodeIntoResult;
 
 /**
  * @typedef {{
- *            defaultCharUnicode: (!ns.DefaultFunction|string|undefined),
+ *            defaultCharUnicode: (!iconvtiny.DefaultFunction|string|undefined),
  *            native: (boolean|undefined),
  *            stripBOM: (boolean|undefined),
  *          }}
  */
-ns.DecodeOptions;
+iconvtiny.DecodeOptions;
 
 /**
  * @typedef {{
- *            defaultCharByte: (!ns.DefaultFunction|string|undefined),
+ *            defaultCharByte: (!iconvtiny.DefaultFunction|string|undefined),
  *            addBOM: (boolean|undefined),
  *          }}
  */
-ns.EncodeOptions;
+iconvtiny.EncodeOptions;
 
 /**
  * @typedef {{
- *            overrides: !ns.Overrides,
+ *            overrides: !iconvtiny.Overrides,
  *          }}
  */
-ns.Options;
+iconvtiny.Options;
 
 /**
  * @typedef {!Array<number|string>}
  */
-ns.Overrides;
+iconvtiny.Overrides;
 
 /**
  * @typedef {function(number,number):?number}
  */
-ns.DefaultFunction;
+iconvtiny.DefaultFunction;
 
 /**
  * ns.Options & ns.DecodeOptions
  *
  * @typedef {{
- *            overrides: !ns.Overrides,
- *            defaultCharUnicode: (!ns.DefaultFunction|string),
+ *            overrides: !iconvtiny.Overrides,
+ *            defaultCharUnicode: (!iconvtiny.DefaultFunction|string),
  *            native: boolean,
  *            stripBOM: boolean,
  *          }}
  */
-ns.OptionsAndDecoderOptions;
+iconvtiny.OptionsAndDecoderOptions;
 
 /**
  * ns.Options & ns.EncodeOptions
  *
  * @typedef {{
- *            overrides: !ns.Overrides,
- *            defaultCharByte: (!ns.DefaultFunction|string),
+ *            overrides: !iconvtiny.Overrides,
+ *            defaultCharByte: (!iconvtiny.DefaultFunction|string),
  *            addBOM: boolean,
  *          }}
  */
-ns.OptionsAndEncoderOptions;
+iconvtiny.OptionsAndEncoderOptions;
 
-/** @type {typeof ns.EncodingFactory} */ ns.SBCS;
-/** @type {typeof ns.EncodingFactory} */ ns.DBCS;
-/** @type {typeof ns.EncodingFactory} */ ns.Singleton;
-/** @type {!ns.Encoding} */ ns.UTF_8;
-/** @type {!ns.Encoding} */ ns.UTF_16LE;
-/** @type {!ns.Encoding} */ ns.UTF_16BE;
-/** @type {!ns.Encoding} */ ns.UTF_32LE;
-/** @type {!ns.Encoding} */ ns.UTF_32BE;
+/** @type {typeof iconvtiny.EncodingFactory} */ iconvtiny.SBCS;
+/** @type {typeof iconvtiny.EncodingFactory} */ iconvtiny.DBCS;
+/** @type {typeof iconvtiny.EncodingFactory} */ iconvtiny.Singleton;
+/** @type {!iconvtiny.Encoding} */ iconvtiny.UTF_8;
+/** @type {!iconvtiny.Encoding} */ iconvtiny.UTF_16LE;
+/** @type {!iconvtiny.Encoding} */ iconvtiny.UTF_16BE;
+/** @type {!iconvtiny.Encoding} */ iconvtiny.UTF_32LE;
+/** @type {!iconvtiny.Encoding} */ iconvtiny.UTF_32BE;

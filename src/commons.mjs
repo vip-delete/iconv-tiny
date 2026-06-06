@@ -191,7 +191,7 @@ export const byteLengthDefault = (str, ctx, op) => {
 };
 
 /**
- * @implements {ns.DecoderStream}
+ * @implements {iconvtiny.DecoderStream}
  */
 class DecoderStream {
   /**
@@ -224,7 +224,7 @@ class DecoderStream {
 }
 
 /**
- * @implements {ns.EncoderStream}
+ * @implements {iconvtiny.EncoderStream}
  */
 class EncoderStream {
   /**
@@ -278,7 +278,7 @@ class EncoderStream {
    * @override
    * @param {string} str
    * @param {!Uint8Array} buf
-   * @return {!ns.TextEncoderEncodeIntoResult}
+   * @return {!iconvtiny.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   encodeInto(str, buf) {
@@ -292,7 +292,7 @@ class EncoderStream {
   /**
    * @override
    * @param {!Uint8Array} buf
-   * @return {!ns.TextEncoderEncodeIntoResult}
+   * @return {!iconvtiny.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   flushInto(buf) {
@@ -305,7 +305,7 @@ class EncoderStream {
 }
 
 /**
- * @implements {ns.Encoding}
+ * @implements {iconvtiny.Encoding}
  */
 class Encoding {
   /**
@@ -367,7 +367,7 @@ class Encoding {
   /**
    * @override
    * @param {!Uint8Array} buf
-   * @param {!ns.DecodeOptions} [options]
+   * @param {!iconvtiny.DecodeOptions} [options]
    * @return {string}
    */
   // @ts-expect-error
@@ -381,7 +381,7 @@ class Encoding {
   /**
    * @override
    * @param {string} str
-   * @param {!ns.EncodeOptions} [options]
+   * @param {!iconvtiny.EncodeOptions} [options]
    * @return {!Uint8Array}
    */
   // @ts-expect-error
@@ -410,7 +410,7 @@ class Encoding {
 
   /**
    * @override
-   * @param {!ns.DecodeOptions} [options]
+   * @param {!iconvtiny.DecodeOptions} [options]
    * @return {!DecoderStream}
    */
   // @ts-expect-error
@@ -423,7 +423,7 @@ class Encoding {
 
   /**
    * @override
-   * @param {!ns.EncodeOptions} [options]
+   * @param {!iconvtiny.EncodeOptions} [options]
    * @return {!EncoderStream}
    */
   // @ts-expect-error
@@ -438,7 +438,7 @@ class Encoding {
 
   /**
    * @private
-   * @param {!ns.DecodeOptions} options
+   * @param {!iconvtiny.DecodeOptions} options
    * @return {!DecoderOperations}
    */
   getDecoderOp(options) {
@@ -452,7 +452,7 @@ class Encoding {
 
   /**
    * @private
-   * @param {!ns.EncodeOptions} options
+   * @param {!iconvtiny.EncodeOptions} options
    * @return {!EncoderOperations}
    */
   getEncoderOp(options) {
@@ -468,7 +468,7 @@ class Encoding {
  * @param {!DecoderOperations} decoderOpFast
  * @param {!EncoderOperations} encoderOp
  * @param {!EncoderOperations} encoderOpFast
- * @return {!ns.Encoding}
+ * @return {!iconvtiny.Encoding}
  */
 export const createEncodingFast = (
   //
@@ -491,7 +491,7 @@ export const createEncodingFast = (
  * @param {!CharsetContext} ctx
  * @param {!DecoderOperations} decoderOp
  * @param {!EncoderOperations} encoderOp
- * @return {!ns.Encoding}
+ * @return {!iconvtiny.Encoding}
  */
 export const createEncoding = (
   //
@@ -509,11 +509,11 @@ export const createEncoding = (
   );
 
 /**
- * @implements {ns.EncodingFactory}
+ * @implements {iconvtiny.EncodingFactory}
  */
 export class Singleton {
   /**
-   * @param {!ns.Encoding} encoding
+   * @param {!iconvtiny.Encoding} encoding
    */
   constructor(encoding) {
     /**
@@ -525,7 +525,7 @@ export class Singleton {
 
   /**
    * @override
-   * @return {!ns.Encoding}
+   * @return {!iconvtiny.Encoding}
    */
   // @ts-expect-error
   create() {

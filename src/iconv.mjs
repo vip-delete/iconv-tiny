@@ -9,21 +9,21 @@ export const canonicalize = (encoding) =>
     .replace(/(?<!\d)0+/gu, "");
 
 /**
- * @implements {ns.Iconv}
+ * @implements {iconvtiny.Iconv}
  */
 class Iconv {
   /**
-   * @param {!Object<string, !ns.EncodingFactory>} [encodings]
+   * @param {!Object<string, !iconvtiny.EncodingFactory>} [encodings]
    * @param {string} [aliases]
    */
   constructor(encodings, aliases) {
     encodings ??= {};
     /**
-     * @type {!Map<string, !ns.EncodingFactory>}
+     * @type {!Map<string, !iconvtiny.EncodingFactory>}
      */
     this.encodingFactoryMap = new Map();
     /**
-     * @type {!Map<string, !ns.Encoding>}
+     * @type {!Map<string, !iconvtiny.Encoding>}
      */
     this.cache = new Map();
     /**
@@ -32,7 +32,7 @@ class Iconv {
     const config = (aliases ?? "").split(",").map((row) => row.split(" ").map(canonicalize));
     for (const key of Object.keys(encodings)) {
       /**
-       * @type {!ns.EncodingFactory}
+       * @type {!iconvtiny.EncodingFactory}
        */
       const encoding = encodings[key];
       // check that "encoding" is EncodingFactory
@@ -49,7 +49,7 @@ class Iconv {
    * @override
    * @param {!Uint8Array} buf
    * @param {string} encoding
-   * @param {!ns.OptionsAndDecoderOptions} [options]
+   * @param {!iconvtiny.OptionsAndDecoderOptions} [options]
    * @return {string}
    */
   // @ts-expect-error
@@ -63,7 +63,7 @@ class Iconv {
    * @override
    * @param {string} str
    * @param {string} encoding
-   * @param {!ns.OptionsAndEncoderOptions} [options]
+   * @param {!iconvtiny.OptionsAndEncoderOptions} [options]
    * @return {!Uint8Array}
    */
   // @ts-expect-error
@@ -74,8 +74,8 @@ class Iconv {
   /**
    * @override
    * @param {string} name
-   * @param {!ns.Options} [options]
-   * @return {!ns.Encoding}
+   * @param {!iconvtiny.Options} [options]
+   * @return {!iconvtiny.Encoding}
    */
   // @ts-expect-error
   getEncoding(name, options) {
@@ -95,8 +95,8 @@ class Iconv {
 }
 
 /**
- * @param {!Object<string, !ns.EncodingFactory>} [encodings]
+ * @param {!Object<string, !iconvtiny.EncodingFactory>} [encodings]
  * @param {string} [aliases]
- * @return {!ns.Iconv}
+ * @return {!iconvtiny.Iconv}
  */
 export const createIconv = (encodings, aliases) => new Iconv(encodings, aliases);

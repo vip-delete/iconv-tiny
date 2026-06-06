@@ -206,7 +206,7 @@ var EncoderStream = class {
    * @override
    * @param {string} str
    * @param {!Uint8Array} buf
-   * @return {!ns.TextEncoderEncodeIntoResult}
+   * @return {!iconvtiny.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   encodeInto(str, buf) {
@@ -219,7 +219,7 @@ var EncoderStream = class {
   /**
    * @override
    * @param {!Uint8Array} buf
-   * @return {!ns.TextEncoderEncodeIntoResult}
+   * @return {!iconvtiny.TextEncoderEncodeIntoResult}
    */
   // @ts-expect-error
   flushInto(buf) {
@@ -257,7 +257,7 @@ var Encoding = class {
   /**
    * @override
    * @param {!Uint8Array} buf
-   * @param {!ns.DecodeOptions} [options]
+   * @param {!iconvtiny.DecodeOptions} [options]
    * @return {string}
    */
   // @ts-expect-error
@@ -270,7 +270,7 @@ var Encoding = class {
   /**
    * @override
    * @param {string} str
-   * @param {!ns.EncodeOptions} [options]
+   * @param {!iconvtiny.EncodeOptions} [options]
    * @return {!Uint8Array}
    */
   // @ts-expect-error
@@ -296,7 +296,7 @@ var Encoding = class {
   // --- Low-level Stream APIs ---
   /**
    * @override
-   * @param {!ns.DecodeOptions} [options]
+   * @param {!iconvtiny.DecodeOptions} [options]
    * @return {!DecoderStream}
    */
   // @ts-expect-error
@@ -308,7 +308,7 @@ var Encoding = class {
   }
   /**
    * @override
-   * @param {!ns.EncodeOptions} [options]
+   * @param {!iconvtiny.EncodeOptions} [options]
    * @return {!EncoderStream}
    */
   // @ts-expect-error
@@ -321,7 +321,7 @@ var Encoding = class {
   // Private
   /**
    * @private
-   * @param {!ns.DecodeOptions} options
+   * @param {!iconvtiny.DecodeOptions} options
    * @return {!DecoderOperations}
    */
   getDecoderOp(options) {
@@ -332,7 +332,7 @@ var Encoding = class {
   }
   /**
    * @private
-   * @param {!ns.EncodeOptions} options
+   * @param {!iconvtiny.EncodeOptions} options
    * @return {!EncoderOperations}
    */
   getEncoderOp(options) {
@@ -357,14 +357,14 @@ var createEncoding = (ctx2, decoderOp, encoderOp) => createEncodingFast(
 );
 var Singleton = class {
   /**
-   * @param {!ns.Encoding} encoding
+   * @param {!iconvtiny.Encoding} encoding
    */
   constructor(encoding) {
     this.encoding = encoding;
   }
   /**
    * @override
-   * @return {!ns.Encoding}
+   * @return {!iconvtiny.Encoding}
    */
   // @ts-expect-error
   create() {
@@ -642,8 +642,8 @@ var DBCS = class {
   }
   /**
    * @override
-   * @param {!ns.Options} [options]
-   * @return {!ns.Encoding}
+   * @param {!iconvtiny.Options} [options]
+   * @return {!iconvtiny.Encoding}
    */
   // @ts-expect-error
   create(options) {
@@ -659,7 +659,7 @@ var DBCS = class {
   }
   /**
    * @override
-   * @param {!ns.Options} [options]
+   * @param {!iconvtiny.Options} [options]
    * @return {!Uint16Array}
    */
   // @ts-expect-error
@@ -672,7 +672,7 @@ var DBCS = class {
 var canonicalize = (encoding) => encoding.toLowerCase().replace(/[^a-z0-9]/gu, "").replace(/(?<!\d)0+/gu, "");
 var Iconv = class {
   /**
-   * @param {!Object<string, !ns.EncodingFactory>} [encodings]
+   * @param {!Object<string, !iconvtiny.EncodingFactory>} [encodings]
    * @param {string} [aliases]
    */
   constructor(encodings2, aliases2) {
@@ -693,7 +693,7 @@ var Iconv = class {
    * @override
    * @param {!Uint8Array} buf
    * @param {string} encoding
-   * @param {!ns.OptionsAndDecoderOptions} [options]
+   * @param {!iconvtiny.OptionsAndDecoderOptions} [options]
    * @return {string}
    */
   // @ts-expect-error
@@ -706,7 +706,7 @@ var Iconv = class {
    * @override
    * @param {string} str
    * @param {string} encoding
-   * @param {!ns.OptionsAndEncoderOptions} [options]
+   * @param {!iconvtiny.OptionsAndEncoderOptions} [options]
    * @return {!Uint8Array}
    */
   // @ts-expect-error
@@ -716,8 +716,8 @@ var Iconv = class {
   /**
    * @override
    * @param {string} name
-   * @param {!ns.Options} [options]
-   * @return {!ns.Encoding}
+   * @param {!iconvtiny.Options} [options]
+   * @return {!iconvtiny.Encoding}
    */
   // @ts-expect-error
   getEncoding(name, options) {
@@ -746,7 +746,7 @@ var decodeSBCS = (decodeState, buf) => {
   const b2c = state.b2c;
   const defaultChar = state.defaultChar;
   const handler = (
-    /** @type {!ns.DefaultFunction} */
+    /** @type {!iconvtiny.DefaultFunction} */
     state.handler
   );
   const u16 = new Uint16Array(buf.length);
@@ -791,7 +791,7 @@ var encodeIntoSBCS = (encodeState, str, buf) => {
   const c2b = state.c2b;
   const defaultChar = state.defaultChar;
   const handler = (
-    /** @type {!ns.DefaultFunction} */
+    /** @type {!iconvtiny.DefaultFunction} */
     state.handler
   );
   const len = Math.min(str.length, buf.length);
@@ -890,8 +890,8 @@ var SBCS = class {
   }
   /**
    * @override
-   * @param {!ns.Options} [options]
-   * @return {!ns.Encoding}
+   * @param {!iconvtiny.Options} [options]
+   * @return {!iconvtiny.Encoding}
    */
   // @ts-expect-error
   create(options) {
@@ -907,7 +907,7 @@ var SBCS = class {
   }
   /**
    * @override
-   * @param {!ns.Options} [options]
+   * @param {!iconvtiny.Options} [options]
    * @return {!Uint16Array}
    */
   // @ts-expect-error

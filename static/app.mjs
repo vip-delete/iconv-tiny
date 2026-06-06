@@ -59,7 +59,7 @@ const App = {
     const error = ref("");
 
     /**
-     * @returns {ns.Options & ns.DecodeOptions & ns.EncodeOptions}
+     * @returns {iconvtiny.Options & iconvtiny.DecodeOptions & iconvtiny.EncodeOptions}
      */
     const options = () => {
       if (defaultCharByte.value.length > 0 && defaultCharByte.value.charCodeAt(0) > 255) {

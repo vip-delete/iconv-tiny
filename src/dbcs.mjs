@@ -175,7 +175,7 @@ const CtxDBCS = {};
 /**
  * @override
  * @param {!CtxDBCS} ctx
- * @param {!ns.Options} [options]
+ * @param {!iconvtiny.Options} [options]
  * @return {!Uint16Array}
  */
 // eslint-disable-next-line no-unused-vars
@@ -225,7 +225,7 @@ const createTableDBCS = (ctx, options) => {
 // FACTORY
 
 /**
- * @implements {ns.EncodingFactory}
+ * @implements {iconvtiny.EncodingFactory}
  * @implements {MappedEncodingFactory}
  */
 export class DBCS {
@@ -250,8 +250,8 @@ export class DBCS {
 
   /**
    * @override
-   * @param {!ns.Options} [options]
-   * @return {!ns.Encoding}
+   * @param {!iconvtiny.Options} [options]
+   * @return {!iconvtiny.Encoding}
    */
   // @ts-expect-error
   create(options) {
@@ -268,7 +268,7 @@ export class DBCS {
 
   /**
    * @override
-   * @param {!ns.Options} [options]
+   * @param {!iconvtiny.Options} [options]
    * @return {!Uint16Array}
    */
   // @ts-expect-error
