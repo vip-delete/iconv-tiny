@@ -53,7 +53,7 @@
     "@types/node": "^25.x",
     "@types/serve-static": "^2.x",
     "@vitest/coverage-istanbul": "^4.x",
-    "@vue/runtime-dom": "^3.5.35",
+    "@vue/runtime-dom": "^3.5.38",
     "esbuild": "^0.28.x",
     "eslint": "^10.x",
     "eslint-plugin-jsdoc": "^63.x",
