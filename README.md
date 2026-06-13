@@ -1,13 +1,12 @@
 [![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/vip-delete/iconv-tiny)
-```
-╔══──--∙·.      .·∙-──────────────────────══════╗
-║ ▪   ▄▄·        ▐  ▄ ▌  ▐·▄▄▄▄▄▄ ▪  ▐  ▄·▄· ▄▌ ║
-│ ██ ▐█ ▌▪▪     •█▌▐█▪█·▐▌  •██  ██ •█▌▐█ █▪█▌  ║
-│ ▐█·██ ▄▄ ▄█▀▄ ▐█▐▐▌ ▐ █ •▄•▐█.▪▐█·▐█▐▐▌ ▐█▪   │
-│ ▐█▌▐█ █▌▐█▌.▐▌█▌▐█▌ ▐█▌    ▐█▌·▐█ █▌▐█▌ ▐█·.  │
-│ ▀▀▀·▀▀▀  ▀█▄▀▪▀  █▪. ▀     ▀▀▀ ▀▀ ▀  █▪  ▀ •  │
-└──────--∙·    ·∙-───────────────by─ViP-DeLeTe──┘
-```
+
+    ╔══──--∙·.      .·∙-──────────────────────══════╗
+    ║ ▪   ▄▄·        ▐  ▄ ▌  ▐·▄▄▄▄▄▄ ▪  ▐  ▄·▄· ▄▌ ║
+    │ ██ ▐█ ▌▪▪     •█▌▐█▪█·▐▌  •██  ██ •█▌▐█ █▪█▌  ║
+    │ ▐█·██ ▄▄ ▄█▀▄ ▐█▐▐▌ ▐ █ •▄•▐█.▪▐█·▐█▐▐▌ ▐█▪   │
+    │ ▐█▌▐█ █▌▐█▌.▐▌█▌▐█▌ ▐█▌    ▐█▌·▐█ █▌▐█▌ ▐█·.  │
+    │ ▀▀▀·▀▀▀  ▀█▄▀▪▀  █▪. ▀     ▀▀▀ ▀▀ ▀  █▪  ▀ •  │
+    └──────--∙·    ·∙-───────────────by─ViP-DeLeTe──┘
 
 [![ci](https://github.com/vip-delete/iconv-tiny/actions/workflows/ci.yaml/badge.svg)](https://github.com/vip-delete/iconv-tiny/actions/workflows/ci.yaml)
 [![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
